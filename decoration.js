@@ -40,6 +40,8 @@ var Decoration = new Lang.Class({
         this._changeWorkspaceID = 0;
         this._windowEnteredID = 0;
         this._settings = settings;
+        this._useMotifHints = Utils.versionCompare(Config.PACKAGE_VERSION, '3.30.0') > 0;
+        this._isWaylandComp = Meta.is_wayland_compositor();
 
         // For Gnome Shell < 3.24, we need to unmax and maximize windows again,
         // to redraw the window with no title bar.
@@ -52,6 +54,20 @@ var Decoration = new Lang.Class({
             Lang.bind(this, function() {
                 this._disable();
                 this._enable();
+            })
+        );
+
+        global.display.connect(
+            'notify::focus-window',
+            Lang.bind(this, function () {
+                this._toggleTitlebar();
+            })
+        );
+
+        global.window_manager.connect(
+            'size-change',
+            Lang.bind(this, function () {
+                this._toggleTitlebar();
             })
         );
 
@@ -250,6 +266,15 @@ var Decoration = new Lang.Class({
         return null;
     },
 
+    _toggleTitlebar() {
+        let win = global.display.focus_window;
+
+        if (win.get_maximized())
+            this._setHideTitlebar(win, true);
+        else
+            this._setHideTitlebar(win, false);
+    },
+
     /**
      * Get the value of _GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED before
      * no-title-bar did its magic.
@@ -332,11 +357,10 @@ var Decoration = new Lang.Class({
         let winXID = this._guessWindowXID(win);
         if (winXID == null)
             return;
-        let cmd = ['xprop', '-id', winXID,
-                   '-f', '_GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED', '32c',
-                   '-set', '_GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED',
-                   (hide ? '0x1' : '0x0')];
+        this._toggleDecorations(win, hide);
+    },
 
+    _updateWindowAsync: function (win, cmd) {
         // Run xprop
         let [success, pid] = GLib.spawn_async(
             null,
@@ -361,6 +385,37 @@ var Decoration = new Lang.Class({
                 win.maximize(MAXIMIZED);
             }
         }));
+
+    },
+
+    _toggleDecorations: function (win, hide) {
+        let winId = this._guessWindowXID(win);
+
+        GLib.idle_add(0, () => {
+            let cmd = [];
+            if (this._useMotifHints)
+                cmd = this._toggleDecorationsMotif(winId, hide);
+            else
+                cmd = this._toggleDecorationsGtk(winId, hide);
+            this._updateWindowAsync(win, cmd);
+        });
+    },
+
+    _toggleDecorationsGtk: function (winId, hide) {
+        let prop = '_GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED';
+        let value = hide ? '0x1' : '0x0';
+
+        return ['xprop', '-id', winId, '-f', prop, '32c', '-set', prop, value];
+    },
+
+    _toggleDecorationsMotif: function (winId, hide) {
+        let prop = '_MOTIF_WM_HINTS';
+        let flag = '0x2, 0x0, %s, 0x0, 0x0';
+        let value = hide
+            ? flag.format(this._isWaylandComp ? '0x2' : '0x0')
+            : flag.format('0x1');
+
+        return ['xprop', '-id', winId, '-f', prop, '32c', '-set', prop, value];
     },
 
     /**** Callbacks ****/
