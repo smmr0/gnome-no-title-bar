@@ -269,6 +269,9 @@ var Decoration = new Lang.Class({
     _toggleTitlebar() {
         let win = global.display.focus_window;
 
+        if (!win)
+            return;
+
         if (win.get_maximized())
             this._setHideTitlebar(win, true);
         else
@@ -388,8 +391,63 @@ var Decoration = new Lang.Class({
 
     },
 
+    _getHintValue(win, hint) {
+        let winId = this._guessWindowXID(win);
+        if (!winId) return;
+
+        let result = GLib.spawn_command_line_sync(`xprop -id ${winId} ${hint}`);
+        let string = ByteArray.toString(result[1]);
+        if (!string.match(/=/)) return;
+
+        string = string.split('=')[1].trim().split(',').map(part => {
+            part = part.trim();
+            return part.match(/\dx/) ? part : `0x${part}`
+        });
+
+        return string;
+    },
+
+    _setHintValue(win, hint, value) {
+        let winId = this._guessWindowXID(win);
+        if (!winId) return;
+
+        Util.spawn(['xprop', '-id', winId, '-f', hint, '32c', '-set', hint, value]);
+    },
+
+    _getMotifHints(win) {
+        if (!win._NoTitleBarOriginalState) {
+            let state = this._getHintValue(win, '_NO_TITLE_BAR_ORIGINAL_STATE');
+            if (!state) {
+                state = this._getHintValue(win, '_MOTIF_WM_HINTS');
+                state = state || ['0x2', '0x0', '0x1', '0x0', '0x0'];
+
+                this._setHintValue(win, '_NO_TITLE_BAR_ORIGINAL_STATE', state.join(', '));
+            }
+            win._NoTitleBarOriginalState = state;
+        }
+
+        return win._NoTitleBarOriginalState;
+    },
+
+    _handleWindow(win) {
+        let handleWin = false;
+
+        if (this._useMotifHints) {
+            let state = this._getMotifHints(win);
+            handleWin = !win.is_client_decorated();
+            handleWin = handleWin && (state[2] != '0x2' && state[2] != '0x0');
+        } else {
+            handleWin = win.decorated;
+        }
+
+        return handleWin;
+    },
+
     _toggleDecorations: function (win, hide) {
         let winId = this._guessWindowXID(win);
+
+        if (!this._handleWindow(win))
+            return;
 
         GLib.idle_add(0, () => {
             let cmd = [];
