@@ -61,6 +61,14 @@ var Decoration = new Lang.Class({
             'notify::focus-window',
             Lang.bind(this, function () {
                 this._toggleTitlebar();
+
+                Mainloop.idle_add(Lang.bind(this, function () {
+                        // This is an ugly hack to force a reload of the application title in the titlebar
+                        let window_title = Main.panel._leftBox.get_children()[1].child._label.text;
+                        Main.panel._leftBox.get_children()[1].child._label.text = window_title + " ";
+                        Main.panel._leftBox.get_children()[1].child._label.text = window_title;
+                    })
+                );
             })
         );
 
