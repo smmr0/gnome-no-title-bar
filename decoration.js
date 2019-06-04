@@ -61,14 +61,6 @@ var Decoration = new Lang.Class({
             'notify::focus-window',
             Lang.bind(this, function () {
                 this._toggleTitlebar();
-
-                Mainloop.idle_add(Lang.bind(this, function () {
-                        // This is an ugly hack to force a reload of the application title in the titlebar
-                        let window_title = Main.panel._leftBox.get_children()[1].child._label.text;
-                        Main.panel._leftBox.get_children()[1].child._label.text = window_title + " ";
-                        Main.panel._leftBox.get_children()[1].child._label.text = window_title;
-                    })
-                );
             })
         );
 
@@ -407,7 +399,7 @@ var Decoration = new Lang.Class({
         let string = ByteArray.toString(result[1]);
         if (!string.match(/=/)) return;
 
-        string = string.split('=')[1].trim().split(',').map(part => {
+        string = string.split('=')[1].trim().split(',').map(function(part) {
             part = part.trim();
             return part.match(/\dx/) ? part : `0x${part}`
         });
@@ -457,14 +449,14 @@ var Decoration = new Lang.Class({
         if (!this._handleWindow(win))
             return;
 
-        GLib.idle_add(0, () => {
+        GLib.idle_add(0, Lang.bind(this, function() {
             let cmd = [];
             if (this._useMotifHints)
                 cmd = this._toggleDecorationsMotif(winId, hide);
             else
                 cmd = this._toggleDecorationsGtk(winId, hide);
             this._updateWindowAsync(win, cmd);
-        });
+        }));
     },
 
     _toggleDecorationsGtk: function (winId, hide) {
