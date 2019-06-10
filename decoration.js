@@ -57,14 +57,14 @@ var Decoration = new Lang.Class({
             })
         );
 
-        global.display.connect(
+        this._focusWindowID = global.display.connect(
             'notify::focus-window',
             Lang.bind(this, function () {
                 this._toggleTitlebar();
             })
         );
 
-        global.window_manager.connect(
+        this._sizeChangeID = global.window_manager.connect(
             'size-change',
             Lang.bind(this, function () {
                 this._toggleTitlebar();
@@ -137,6 +137,16 @@ var Decoration = new Lang.Class({
         if (this._windowEnteredID) {
             display.disconnect(this._windowEnteredID);
             this._windowEnteredID = 0;
+        }
+
+        if (this._focusWindowID) {
+            global.display.disconnect(this._focusWindowID);
+            this._focusWindowID = 0;
+        }
+
+        if (this._sizeChangeID) {
+            global.window_manager.disconnect(this._sizeChangeID);
+            this._sizeChangeID = 0;
         }
 
         this._cleanWorkspaces();
