@@ -548,7 +548,7 @@ var Decoration = new Lang.Class({
                 return false;
             }
 
-            let hide = true;
+            let hide = win.is_maximised();
             if (this._settings.get_boolean('only-main-monitor'))
                 hide = win.is_on_primary_monitor();
             this._setHideTitlebar(win, hide);
@@ -639,7 +639,7 @@ var Decoration = new Lang.Class({
     },
 
     _windowEnteredMonitor: function(metaScreen, monitorIndex, metaWin) {
-        let hide = true;
+        let hide = metaWin.get_maximized();
         if (this._settings.get_boolean('only-main-monitor'))
             hide = monitorIndex == Main.layoutManager.primaryIndex;
         this._setHideTitlebar(metaWin, hide);
