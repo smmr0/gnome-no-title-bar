@@ -548,7 +548,7 @@ var Decoration = new Lang.Class({
                 return false;
             }
 
-            let hide = win.is_maximised();
+            let hide = win.get_maximised();
             if (this._settings.get_boolean('only-main-monitor'))
                 hide = win.is_on_primary_monitor();
             this._setHideTitlebar(win, hide);
