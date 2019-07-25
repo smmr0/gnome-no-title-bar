@@ -869,7 +869,7 @@ Blacklist: all applications, except the ones on the list, will have the title ba
       <property name="spacing">5</property>
       <child>
         <object class="GtkLabel" id="extension_name">
-          <property name="label">&lt;b&gt;No Title Bar&lt;/b&gt;</property>
+          <property name="label">&lt;b&gt;No Title Bar - Forked&lt;/b&gt;</property>
           <property name="use_markup">True</property>
         </object>
         <packing>
@@ -906,7 +906,7 @@ Blacklist: all applications, except the ones on the list, will have the title ba
           </child>
           <child>
             <object class="GtkLabel" id="email_label">
-              <property name="label">Fran Glais (&lt;a href="mailto:franglais125@gmail.com"&gt;franglais125@gmail.com&lt;/a&gt;)</property>
+              <property name="label">Jonas Pöhler (&lt;a href="mailto:info@jonaspoehler.de"&gt;info@jonaspoehler.de&lt;/a&gt;)</property>
               <property name="use_markup">True</property>
             </object>
             <packing>
@@ -929,7 +929,7 @@ Blacklist: all applications, except the ones on the list, will have the title ba
           <property name="events"/>
           <property name="halign">center</property>
           <property name="relief">none</property>
-          <property name="uri">https://github.com/franglais125/no-title-bar</property>
+          <property name="uri">https://github.com/poehlerj/no-title-bar</property>
         </object>
         <packing>
           <property name="expand">False</property>

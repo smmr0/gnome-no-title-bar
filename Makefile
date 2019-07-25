@@ -1,8 +1,8 @@
 # Basic Makefile
 
-UUID = no-title-bar@franglais125.gmail.com
+UUID = no-title-bar@jonaspoehler.de
 BASE_MODULES = app_menu.js convenience.js extension.js prefs.js buttons.js decoration.js metadata.json Settings.ui stylesheet-tiled.css stylesheet.css utils.js
-INSTALLNAME = no-title-bar@franglais125.gmail.com
+INSTALLNAME = no-title-bar@jonaspoehler.de
 MSGSRC = $(wildcard po/*.po)
 ifeq ($(strip $(DESTDIR)),)
 	INSTALLBASE = $(HOME)/.local/share/gnome-shell/extensions

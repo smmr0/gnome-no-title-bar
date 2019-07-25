@@ -594,7 +594,7 @@ var Decoration = new Lang.Class({
 
             if (fileContent[0] == true) {
                 styleContent = ByteArray.toString(fileContent[1]);
-                styleContent = styleContent.replace(/@import.*no-title-bar@franglais125\.gmail\.com.*css['"]\);\n/g, '');
+                styleContent = styleContent.replace(/@import.*no-title-bar@jonaspoehler\.de.*css['"]\);\n/g, '');
             }
         }
 
