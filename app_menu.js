@@ -70,7 +70,8 @@ var AppMenu = new Lang.Class({
         // Not the topmost maximized window.
         if (win !== Utils.getWindow()) {
             let app = Shell.WindowTracker.get_default().get_window_app(win);
-            title = app.get_name();
+            if (app)
+                title = app.get_name();
         }
 
         // Not on the primary monitor
