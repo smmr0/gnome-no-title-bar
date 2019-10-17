@@ -15,10 +15,9 @@ let SHOW_DELAY = 350;
 let SHOW_DURATION = 0.15;
 let HIDE_DURATION = 0.1;
 
-var AppMenu = new Lang.Class({
-    Name: 'NoTitleBar.AppMenu',
+var AppMenu = class {
 
-    _init: function(settings) {
+    constructor(settings) {
         this._wmCallbackIDs = [];
         this._focusCallbackID = 0;
         this._tooltipCallbackID = 0;
@@ -54,12 +53,12 @@ var AppMenu = new Lang.Class({
             this._enable();
         else
             this._disable();
-    },
+    }
 
     /**
      * AppMenu synchronization
      */
-    _updateAppMenu: function() {
+    _updateAppMenu() {
         let win = global.display.focus_window;
         if (!win) {
             return false;
@@ -83,9 +82,9 @@ var AppMenu = new Lang.Class({
         this._tooltip.text = title;
 
         return false;
-    },
+    }
 
-    _updateAppMenuWidth: function() {
+    _updateAppMenuWidth() {
         this._restoreAppMenuWidth();
 
         let width = this._settings.get_int('app-menu-width');
@@ -93,16 +92,16 @@ var AppMenu = new Lang.Class({
             this._appMenu._label.set_style('max-width: ' + width + 'px');
 
         this._updateAppMenu();
-    },
+    }
 
-    _restoreAppMenuWidth: function() {
+    _restoreAppMenuWidth() {
         this._appMenu._label.set_style('max-width');
-    },
+    }
 
     /**
      * Track the focused window's title
      */
-    _changeActiveWindow: function (win) {
+    _changeActiveWindow(win) {
         if (win === this._activeWindow) {
             return;
         }
@@ -117,12 +116,12 @@ var AppMenu = new Lang.Class({
             this._awCallbackID = win.connect('notify::title', Lang.bind(this, this._updateAppMenu));
             this._updateAppMenu();
         }
-    },
+    }
 
     /**
      * Focus change
      */
-    _onFocusChange: function() {
+    _onFocusChange() {
         let input_mode_check = (global.stage_input_mode === undefined)
             ? true
             : global.stage_input_mode == Shell.StageInputMode.FOCUSED;
@@ -135,20 +134,20 @@ var AppMenu = new Lang.Class({
 
         this._changeActiveWindow(global.display.focus_window);
         return false;
-    },
+    }
 
     /**
      * tooltip
      */
 
-    _resetMenuCallback: function() {
+    _resetMenuCallback() {
         if (this._menuCallbackID) {
             this._appMenu.menu.disconnect(this._menuCallbackID);
             this._menuCallbackID = 0;
         }
-    },
+    }
 
-    _onAppMenuHover: function(actor) {
+    _onAppMenuHover(actor) {
         let hover = actor.get_hover();
         if (this._showTooltip === hover) {
             return false;
@@ -230,9 +229,9 @@ var AppMenu = new Lang.Class({
         }
 
         return false;
-    },
+    }
 
-    _enable: function() {
+    _enable() {
         this._tooltip = new St.Label({
             style_class: 'tooltip dash-label',
             text: '',
@@ -265,9 +264,9 @@ var AppMenu = new Lang.Class({
         this._updateAppMenuWidth();
 
         this._isEnabled = true;
-    },
+    }
 
-    _disable: function() {
+    _disable() {
         this._wmCallbackIDs.forEach(function(id) {
             global.window_manager.disconnect(id);
         });
@@ -318,9 +317,9 @@ var AppMenu = new Lang.Class({
         this._restoreAppMenuWidth();
 
         this._isEnabled = false;
-    },
+    }
 
-    destroy: function() {
+    destroy() {
          if (this._isEnabled)
              this._disable();
 
@@ -328,5 +327,5 @@ var AppMenu = new Lang.Class({
              this._settings.disconnect(this._settingsId);
              this._settingsId = null;
          }
-    },
-});
+    }
+}
