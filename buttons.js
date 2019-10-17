@@ -177,13 +177,13 @@ var Buttons = new Lang.Class({
             if (boxes[1].get_children().length) {
                 switch (this._settings.get_enum('button-position')) {
                     case Position.BEFORE_NAME: {
-                        let activitiesBox = Main.panel.statusArea.activities.actor.get_parent()
+                        let activitiesBox = Main.panel.statusArea.activities.get_parent()
                         let leftBox = activitiesBox.get_parent();
                         leftBox.insert_child_above(this._container, activitiesBox);
                         break;
                     }
                     case Position.AFTER_NAME: {
-                        let appMenuBox = Main.panel.statusArea.appMenu.actor.get_parent()
+                        let appMenuBox = Main.panel.statusArea.appMenu.get_parent()
                         let leftBox = appMenuBox.get_parent();
                         leftBox.insert_child_above(this._container, appMenuBox);
                         break;
@@ -422,7 +422,7 @@ var Buttons = new Lang.Class({
             return Clutter.EVENT_STOP;
         };
 
-        Main.panel.actor.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
+        Main.panel.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
     },
     _disableDragOnPanel: function() {
         if (!this._originalFunction) {
@@ -430,7 +430,7 @@ var Buttons = new Lang.Class({
         }
 
         Main.panel._onButtonPress = this._originalFunction;
-        Main.panel.actor.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
+        Main.panel.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
     },
 
     _enable: function() {

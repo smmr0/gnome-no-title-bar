@@ -190,11 +190,11 @@ var AppMenu = new Lang.Class({
                     }
                 });
 
-                let [px, py] = Main.panel.actor.get_transformed_position();
+                let [px, py] = Main.panel.get_transformed_position();
                 let [bx, by] = label.get_transformed_position();
                 let [w, h] = label.get_transformed_size();
 
-                let y = py + Main.panel.actor.get_height() + 3;
+                let y = py + Main.panel.get_height() + 3;
                 let x = bx - Math.round((this._tooltip.get_width() - w)/2);
                 this._tooltip.opacity = 0;
                 this._tooltip.set_position(x, y);
@@ -243,7 +243,7 @@ var AppMenu = new Lang.Class({
         this._focusCallbackID = global.display.connect('notify::focus-window', Lang.bind(this, this._onFocusChange));
         this._onFocusChange();
 
-        this._tooltipCallbackID = this._appMenu.actor.connect('notify::hover',
+        this._tooltipCallbackID = this._appMenu.connect('notify::hover',
             Lang.bind(this, this._onAppMenuHover));
         this._globalCallBackID = display.connect('restacked',
             Lang.bind(this, this._updateAppMenu));
@@ -289,7 +289,7 @@ var AppMenu = new Lang.Class({
         }
 
         if (this._tooltipCallbackID) {
-            this._appMenu.actor.disconnect(this._tooltipCallbackID);
+            this._appMenu.disconnect(this._tooltipCallbackID);
             this._tooltipCallbackID = 0;
         }
 
