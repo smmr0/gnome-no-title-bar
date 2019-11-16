@@ -33,10 +33,9 @@ const WindowState = {
 let appSys = Shell.AppSystem.get_default();
 let workspaces = [];
 
-var Decoration = new Lang.Class({
-    Name: 'NoTitleBar.Decoration',
+var Decoration = class {
 
-    _init: function(settings) {
+    constructor(settings) {
         this._changeWorkspaceID = 0;
         this._windowEnteredID = 0;
         this._settings = settings;
@@ -94,9 +93,9 @@ var Decoration = new Lang.Class({
                 this._enable();
             })
         );
-    },
+    }
 
-    _enable: function() {
+    _enable() {
         // Connect events
         this._changeWorkspaceID = ws_manager.connect('notify::n-workspaces', Lang.bind(this, this._onChangeNWorkspaces));
         this._windowEnteredID   = display.connect('window-entered-monitor', Lang.bind(this, this._windowEnteredMonitor));
@@ -126,9 +125,9 @@ var Decoration = new Lang.Class({
         }));
 
         this._isEnabled = true;
-    },
+    }
 
-    _disable: function() {
+    _disable() {
         if (this._changeWorkspaceID) {
             ws_manager.disconnect(this._changeWorkspaceID);
             this._changeWorkspaceID = 0;
@@ -164,15 +163,15 @@ var Decoration = new Lang.Class({
         this._removeUserStyles();
 
         this._isEnabled = false;
-    },
+    }
 
-    destroy: function() {
+    destroy() {
         this._disable();
         Meta.MonitorManager.get().disconnect(this._changeMonitorsID);
         this._settings.disconnect(this._onlyMainMonitorID);
         this._settings.disconnect(this._ignoreListID);
         this._settings.disconnect(this._ignoreListTypeID);
-    },
+    }
 
     /**
      * Guesses the X ID of a window.
@@ -193,7 +192,7 @@ var Decoration = new Lang.Class({
      * @param {Meta.Window} win - the window to guess the XID of. You wil get better
      * success if the window's actor (`win.get_compositor_private()`) exists.
      */
-    _guessWindowXID: function(win) {
+    _guessWindowXID(win) {
         // We cache the result so we don't need to redetect.
         if (win._noTitleBarWindowID) {
             return win._noTitleBarWindowID;
@@ -274,7 +273,7 @@ var Decoration = new Lang.Class({
 
         // debugging for when people find bugs..
         return null;
-    },
+    }
 
     _toggleTitlebar() {
         let win = global.display.focus_window;
@@ -286,7 +285,7 @@ var Decoration = new Lang.Class({
             this._setHideTitlebar(win, true);
         else
             this._setHideTitlebar(win, false);
-    },
+    }
 
     /**
      * Get the value of _GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED before
@@ -294,7 +293,7 @@ var Decoration = new Lang.Class({
      *
      * @param {Meta.Window} win - the window to check the property
      */
-    _getOriginalState: function (win) {
+    _getOriginalState (win) {
         if (win._noTitleBarOriginalState !== undefined) {
             return win._noTitleBarOriginalState;
         }
@@ -337,7 +336,7 @@ var Decoration = new Lang.Class({
         // title bar should be hidden when maximized. If we can't find this atom, the
         // window uses the default behavior
         return win._noTitleBarOriginalState = WindowState.DEFAULT;
-    },
+    }
 
     /**
      * Tells the window manager to hide the titlebar on maximised windows.
@@ -354,7 +353,7 @@ var Decoration = new Lang.Class({
      * @param {Meta.Window} win - window to set the HIDE_TITLEBAR_WHEN_MAXIMIZED property of.
      * @param {boolean} hide - whether to hide the titlebar or not.
      */
-    _setHideTitlebar: function(win, hide) {
+    _setHideTitlebar(win, hide) {
         // Check if the window is a black/white-list
         if (Utils.isWindowIgnored(this._settings, win) && hide) {
             return;
@@ -371,9 +370,9 @@ var Decoration = new Lang.Class({
         if (winXID == null)
             return;
         this._toggleDecorations(win, hide);
-    },
+    }
 
-    _updateWindowAsync: function (win, cmd) {
+    _updateWindowAsync (win, cmd) {
         // Run xprop
         let [success, pid] = GLib.spawn_async(
             null,
@@ -398,8 +397,7 @@ var Decoration = new Lang.Class({
                 win.maximize(MAXIMIZED);
             }
         }));
-
-    },
+    }
 
     _getHintValue(win, hint) {
         let winId = this._guessWindowXID(win);
@@ -415,14 +413,14 @@ var Decoration = new Lang.Class({
         });
 
         return string;
-    },
+    }
 
     _setHintValue(win, hint, value) {
         let winId = this._guessWindowXID(win);
         if (!winId) return;
 
         Util.spawn(['xprop', '-id', winId, '-f', hint, '32c', '-set', hint, value]);
-    },
+    }
 
     _getMotifHints(win) {
         if (!win._NoTitleBarOriginalState) {
@@ -437,7 +435,7 @@ var Decoration = new Lang.Class({
         }
 
         return win._NoTitleBarOriginalState;
-    },
+    }
 
     _handleWindow(win) {
         let handleWin = false;
@@ -451,9 +449,9 @@ var Decoration = new Lang.Class({
         }
 
         return handleWin;
-    },
+    }
 
-    _toggleDecorations: function (win, hide) {
+    _toggleDecorations (win, hide) {
         let winId = this._guessWindowXID(win);
 
         if (!this._handleWindow(win))
@@ -467,16 +465,16 @@ var Decoration = new Lang.Class({
                 cmd = this._toggleDecorationsGtk(winId, hide);
             this._updateWindowAsync(win, cmd);
         }));
-    },
+    }
 
-    _toggleDecorationsGtk: function (winId, hide) {
+    _toggleDecorationsGtk (winId, hide) {
         let prop = '_GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED';
         let value = hide ? '0x1' : '0x0';
 
         return ['xprop', '-id', winId, '-f', prop, '32c', '-set', prop, value];
-    },
+    }
 
-    _toggleDecorationsMotif: function (winId, hide) {
+    _toggleDecorationsMotif (winId, hide) {
         let prop = '_MOTIF_WM_HINTS';
         let flag = '0x2, 0x0, %s, 0x0, 0x0';
         let value = hide
@@ -484,7 +482,7 @@ var Decoration = new Lang.Class({
             : flag.format('0x1');
 
         return ['xprop', '-id', winId, '-f', prop, '32c', '-set', prop, value];
-    },
+    }
 
     /**** Callbacks ****/
     /**
@@ -499,7 +497,7 @@ var Decoration = new Lang.Class({
      *
      * @see undecorate
      */
-    _onWindowAdded: function(ws, win, retry) {
+    _onWindowAdded(ws, win, retry) {
         if (win.window_type === Meta.WindowType.DESKTOP ||
             win.window_type === Meta.WindowType.MODAL_DIALOG) {
             return false;
@@ -556,7 +554,7 @@ var Decoration = new Lang.Class({
         }));
 
         return false;
-    },
+    }
 
     /**
      * Callback whenever the number of workspaces changes.
@@ -566,7 +564,7 @@ var Decoration = new Lang.Class({
      *
      * @see _onWindowAdded
      */
-    _onChangeNWorkspaces: function() {
+    _onChangeNWorkspaces() {
         this._cleanWorkspaces();
 
         let i = ws_manager.n_workspaces;
@@ -581,12 +579,12 @@ var Decoration = new Lang.Class({
         }
 
         return false;
-    },
+    }
 
     /* CSS styles, for Wayland decorations
      */
 
-    _updateUserStyles: function () {
+    _updateUserStyles () {
         let styleContent = '';
 
         if (GLib.file_test(this._userStylesPath, GLib.FileTest.EXISTS)) {
@@ -599,9 +597,9 @@ var Decoration = new Lang.Class({
         }
 
         return styleContent;
-    },
+    }
 
-    _addUserStyles: function () {
+    _addUserStyles () {
         let styleContent = this._updateUserStyles();
         let styleFilePath = Me.path + '/stylesheet.css';
         let styleImport = "@import url('" + styleFilePath + "');\n";
@@ -610,18 +608,18 @@ var Decoration = new Lang.Class({
         styleImport += "@import url('" + styleFilePath + "');\n";
 
         GLib.file_set_contents(this._userStylesPath, styleImport + styleContent);
-    },
+    }
 
-    _removeUserStyles: function () {
+    _removeUserStyles () {
         let styleContent = this._updateUserStyles();
         GLib.file_set_contents(this._userStylesPath, styleContent);
-    },
+    }
 
 
     /**
      * Utilities
      */
-    _cleanWorkspaces: function() {
+    _cleanWorkspaces() {
         // disconnect window-added from workspaces
         workspaces.forEach(function(ws) {
             ws.disconnect(ws._noTitleBarWindowAddedId);
@@ -629,20 +627,20 @@ var Decoration = new Lang.Class({
         });
 
         workspaces = [];
-    },
+    }
 
-    _forEachWindow: function(callback) {
+    _forEachWindow(callback) {
         global.get_window_actors()
             .map(function (w) { return w.meta_window; })
             .filter(function(w) { return w.window_type !== Meta.WindowType.DESKTOP; })
             .forEach(callback);
-    },
+    }
 
-    _windowEnteredMonitor: function(metaScreen, monitorIndex, metaWin) {
+    _windowEnteredMonitor(metaScreen, monitorIndex, metaWin) {
         let hide = metaWin.get_maximized();
         if (this._settings.get_boolean('only-main-monitor'))
             hide = monitorIndex == Main.layoutManager.primaryIndex;
         this._setHideTitlebar(metaWin, hide);
     }
 
-});
+}

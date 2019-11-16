@@ -47,10 +47,9 @@ const DCONF_META_PATH = 'org.gnome.desktop.wm.preferences';
 
 let actors = [], boxes = [];
 
-var Buttons = new Lang.Class({
-    Name: 'NoTitleBar.Buttons',
+var Buttons = class {
 
-    _init: function(settings) {
+    constructor(settings) {
         this._extensionPath = Me.dir.get_path();
 
         this._wmCallbackIDs = [];
@@ -88,9 +87,9 @@ var Buttons = new Lang.Class({
             this._enable();
         else
             this._disable();
-    },
+    }
 
-    _createButtons: function() {
+    _createButtons() {
         // Ensure we do not create buttons twice.
         this._destroyButtons();
 
@@ -177,13 +176,13 @@ var Buttons = new Lang.Class({
             if (boxes[1].get_children().length) {
                 switch (this._settings.get_enum('button-position')) {
                     case Position.BEFORE_NAME: {
-                        let activitiesBox = Main.panel.statusArea.activities.actor.get_parent()
+                        let activitiesBox = Main.panel.statusArea.activities.get_parent()
                         let leftBox = activitiesBox.get_parent();
                         leftBox.insert_child_above(this._container, activitiesBox);
                         break;
                     }
                     case Position.AFTER_NAME: {
-                        let appMenuBox = Main.panel.statusArea.appMenu.actor.get_parent()
+                        let appMenuBox = Main.panel.statusArea.appMenu.get_parent()
                         let leftBox = appMenuBox.get_parent();
                         leftBox.insert_child_above(this._container, appMenuBox);
                         break;
@@ -203,9 +202,9 @@ var Buttons = new Lang.Class({
             this._updateVisibility();
             return false;
         }));
-    },
+    }
 
-    _destroyButtons: function() {
+    _destroyButtons() {
         if (actors) {
             actors.forEach(function(actor, i) {
                 actor.destroy();
@@ -219,9 +218,9 @@ var Buttons = new Lang.Class({
             this._disableButtonAutohide();
             this._container.destroy();
         }
-    },
+    }
 
-    _enableButtonAutohide: function() {
+    _enableButtonAutohide() {
         this._disableButtonAutohide();
 
         if (this._container) {
@@ -230,9 +229,9 @@ var Buttons = new Lang.Class({
 
         this._containerEnterId = this._container.connect('enter-event', b_shown);
         this._containerLeaveId = this._container.connect('leave-event', b_hidden);
-    },
+    }
 
-    _disableButtonAutohide: function() {
+    _disableButtonAutohide() {
         if (this._container) {
             this._container.opacity = 255;
         }
@@ -245,12 +244,12 @@ var Buttons = new Lang.Class({
             this._container.disconnect(this._containerLeaveId);
             this._containerLeaveId = 0;
         }
-    },
+    }
 
     /**
      * Buttons actions
      */
-    _leftclick: function(callback) {
+    _leftclick(callback) {
         return function(actor, event) {
             if (event.get_button() !== 1) {
                 return null;
@@ -258,18 +257,18 @@ var Buttons = new Lang.Class({
 
             return callback(actor, event);
         }
-    },
+    }
 
-    _minimize: function() {
+    _minimize() {
         let win = Utils.getWindow();
         if (!win || win.minimized) {
             return;
         }
 
         win.minimize();
-    },
+    }
 
-    _maximize: function() {
+    _maximize() {
         let win = Utils.getWindow();
         if (!win) {
             return;
@@ -283,21 +282,21 @@ var Buttons = new Lang.Class({
         }
 
         win.activate(global.get_current_time());
-    },
+    }
 
-    _close: function() {
+    _close() {
         let win = Utils.getWindow();
         if (!win) {
             return;
         }
 
         win.delete(global.get_current_time());
-    },
+    }
 
     /**
      * Theming
      */
-    _loadTheme: function() {
+    _loadTheme() {
         let theme;
         if (this._settings.get_boolean('automatic-theme')) {
             theme = Gtk.Settings.get_default().gtk_theme_name;
@@ -327,20 +326,20 @@ var Buttons = new Lang.Class({
         });
 
         this._activeCSS = cssPath;
-    },
+    }
 
-    _unloadTheme: function() {
+    _unloadTheme() {
         if (this._activeCSS) {
             let cssFile = Gio.file_new_for_path(this._activeCSS);
             St.ThemeContext.get_for_stage(global.stage).get_theme().unload_stylesheet(cssFile);
             this._activeCSS = false;
         }
-    },
+    }
 
     /**
      * callbacks
      */
-    _updateVisibility: function() {
+    _updateVisibility() {
         // If we have a window to control, then we show the buttons.
         let visible = !Main.overview.visible;
         if (visible) {
@@ -373,8 +372,9 @@ var Buttons = new Lang.Class({
         });
 
         return false;
-    },
-    _enableDragOnPanel: function() {
+    }
+
+    _enableDragOnPanel() {
         let settings = this._settings;
 
         this._originalFunction = Main.panel._onButtonPress;
@@ -422,18 +422,19 @@ var Buttons = new Lang.Class({
             return Clutter.EVENT_STOP;
         };
 
-        Main.panel.actor.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
-    },
-    _disableDragOnPanel: function() {
+        Main.panel.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
+    }
+
+    _disableDragOnPanel() {
         if (!this._originalFunction) {
             return;
         }
 
         Main.panel._onButtonPress = this._originalFunction;
-        Main.panel.actor.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
-    },
+        Main.panel.connect('button-press-event', Lang.bind(Main.panel, Main.panel._onButtonPress));
+    }
 
-    _enable: function() {
+    _enable() {
         this._loadTheme();
         this._createButtons();
 
@@ -455,9 +456,9 @@ var Buttons = new Lang.Class({
         this._enableDragOnPanel();
 
         this._isEnabled = true;
-    },
+    }
 
-    _disable: function() {
+    _disable() {
         this._wmCallbackIDs.forEach(function(id) {
             global.window_manager.disconnect(id);
         });
@@ -485,9 +486,9 @@ var Buttons = new Lang.Class({
         this._disableDragOnPanel();
 
         this._isEnabled = false;
-    },
+    }
 
-    destroy: function() {
+    destroy() {
         if (this._isEnabled)
             this._disable();
 
@@ -506,4 +507,4 @@ var Buttons = new Lang.Class({
             this._snappedId = 0;
         }
     }
-});
+}
