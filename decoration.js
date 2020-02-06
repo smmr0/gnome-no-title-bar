@@ -307,7 +307,7 @@ var Decoration = class {
 
         let xprops = GLib.spawn_command_line_sync(cmd);
         if (!xprops[0]) {
-            return win._noTitleBarOriginalState = State.UNKNOWN;
+            return win._noTitleBarOriginalState = WindowState.UNKNOWN;
         }
 
         let str = ByteArray.toString(xprops[1]);
