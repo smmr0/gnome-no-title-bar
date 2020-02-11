@@ -13,6 +13,7 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 const Utils = Me.imports.utils;
+const WindowState = Me.imports.decoration.WindowState;
 
 const display = Utils.display;
 
@@ -346,8 +347,8 @@ var Buttons = class {
             visible = false;
             let win = Utils.getWindow();
             if (win) {
-                visible = win._noTitleBarOriginalState == 'default' || this._settings.get_boolean('buttons-for-all-win');
-                
+                visible = win._noTitleBarOriginalState === WindowState.DEFAULT
+                    || this._settings.get_boolean('buttons-for-all-win');
                 if (visible) {
                     visible = !Utils.isWindowIgnored(this._settings, win);
 

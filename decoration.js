@@ -23,7 +23,7 @@ const IgnoreList = {
     BLACKLIST: 2,
 }
 
-const WindowState = {
+var WindowState = {
     DEFAULT: 'default',
     HIDE_TITLEBAR: 'hide_titlebar',
     UNDECORATED: 'undecorated',
