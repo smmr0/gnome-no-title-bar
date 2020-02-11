@@ -346,8 +346,8 @@ var Buttons = class {
             visible = false;
             let win = Utils.getWindow();
             if (win) {
-                visible = win.decorated || this._settings.get_boolean('buttons-for-all-win');
-
+                visible = win._noTitleBarOriginalState == 'default' || this._settings.get_boolean('buttons-for-all-win');
+                
                 if (visible) {
                     visible = !Utils.isWindowIgnored(this._settings, win);
 

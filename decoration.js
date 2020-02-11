@@ -307,7 +307,7 @@ var Decoration = class {
 
         let xprops = GLib.spawn_command_line_sync(cmd);
         if (!xprops[0]) {
-            return win._noTitleBarOriginalState = State.UNKNOWN;
+            return win._noTitleBarOriginalState = WindowState.UNKNOWN;
         }
 
         let str = ByteArray.toString(xprops[1]);
@@ -423,7 +423,7 @@ var Decoration = class {
     }
 
     _getMotifHints(win) {
-        if (!win._NoTitleBarOriginalState) {
+        if (!win._noTitleBarOriginalState) {
             let state = this._getHintValue(win, '_NO_TITLE_BAR_ORIGINAL_STATE');
             if (!state) {
                 state = this._getHintValue(win, '_MOTIF_WM_HINTS');
@@ -431,10 +431,10 @@ var Decoration = class {
 
                 this._setHintValue(win, '_NO_TITLE_BAR_ORIGINAL_STATE', state.join(', '));
             }
-            win._NoTitleBarOriginalState = state;
+            win._noTitleBarOriginalState = state;
         }
 
-        return win._NoTitleBarOriginalState;
+        return win._noTitleBarOriginalState;
     }
 
     _handleWindow(win) {
