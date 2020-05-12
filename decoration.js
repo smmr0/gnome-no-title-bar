@@ -18,7 +18,7 @@ const ws_manager = Utils.ws_manager;
 const display = Utils.display;
 
 const IgnoreList = {
-    DISABLED:  0,
+    DISABLED: 0,
     WHITELIST: 1,
     BLACKLIST: 2,
 };
@@ -43,7 +43,8 @@ var Decoration = class {
 
         this._changeMonitorsID = Meta.MonitorManager.get().connect(
             'monitors-changed',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
+                Utils.log_debug("Monitors changed, reloading");
                 this._disable();
                 this._enable();
             })
@@ -52,6 +53,7 @@ var Decoration = class {
         this._focusWindowID = global.display.connect(
             'notify::focus-window',
             Lang.bind(this, function () {
+                Utils.log_debug("Focus changed, toggling titlebar");
                 this._toggleTitlebar();
             })
         );
@@ -59,13 +61,14 @@ var Decoration = class {
         this._sizeChangeID = global.window_manager.connect(
             'size-change',
             Lang.bind(this, function () {
+                Utils.log_debug("Size changed, toggling titlebar");
                 this._toggleTitlebar();
             })
         );
 
         this._onlyMainMonitorID = this._settings.connect(
             'changed::only-main-monitor',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
                 this._disable();
                 this._enable();
             })
@@ -73,7 +76,7 @@ var Decoration = class {
 
         this._ignoreListID = this._settings.connect(
             'changed::ignore-list',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
                 this._disable();
                 this._enable();
             })
@@ -81,7 +84,7 @@ var Decoration = class {
 
         this._ignoreListTypeID = this._settings.connect(
             'changed::ignore-list-type',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
                 this._disable();
                 this._enable();
             })
@@ -89,13 +92,14 @@ var Decoration = class {
     }
 
     _enable() {
+        Utils.log_debug("Enabling extension");
         // Connect events
         this._changeWorkspaceID = ws_manager.connect('notify::n-workspaces', Lang.bind(this, this._onChangeNWorkspaces));
-        this._windowEnteredID   = display.connect('window-entered-monitor', Lang.bind(this, this._windowEnteredMonitor));
+        this._windowEnteredID = display.connect('window-entered-monitor', Lang.bind(this, this._windowEnteredMonitor));
 
 
         // CSS style for Wayland decorations
-        this._userStylesPath  = GLib.get_user_config_dir() + '/gtk-3.0/gtk.css';
+        this._userStylesPath = GLib.get_user_config_dir() + '/gtk-3.0/gtk.css';
         Mainloop.idle_add(Lang.bind(this, this._addUserStyles));
 
         /**
@@ -109,7 +113,7 @@ var Decoration = class {
          * these windows will have onMaximise called twice on them.
          */
         Mainloop.idle_add(Lang.bind(this, function () {
-            this._forEachWindow(Lang.bind(this, function(win) {
+            this._forEachWindow(Lang.bind(this, function (win) {
                 this._onWindowAdded(null, win);
             }));
 
@@ -143,7 +147,7 @@ var Decoration = class {
 
         this._cleanWorkspaces();
 
-        this._forEachWindow(Lang.bind(this, function(win) {
+        this._forEachWindow(Lang.bind(this, function (win) {
             let state = this._getOriginalState(win);
             if (state == WindowState.DEFAULT) {
                 this._setHideTitlebar(win, false);
@@ -164,6 +168,9 @@ var Decoration = class {
         this._settings.disconnect(this._onlyMainMonitorID);
         this._settings.disconnect(this._ignoreListID);
         this._settings.disconnect(this._ignoreListTypeID);
+        this._onlyMainMonitorID = null;
+        this._ignoreListID = null;
+        this._ignoreListTypeID = null;
     }
 
     /**
@@ -188,6 +195,8 @@ var Decoration = class {
     _guessWindowXID(win) {
         // We cache the result so we don't need to redetect.
         if (win._noTitleBarWindowID) {
+            Utils.log_debug(`Window info: title='${win.get_title()}', type='${win.get_window_type()}', ` +
+                `xid=${win._noTitleBarWindowID}'`);
             return win._noTitleBarWindowID;
         }
 
@@ -199,9 +208,12 @@ var Decoration = class {
         try {
             let m = win.get_description().match(/0x[0-9a-f]+/);
             if (m && m[0]) {
+                Utils.log_debug(`Window info: title='${win.get_title()}', type='${win.get_window_type()}', ` +
+                    `xid=${m[0]}'`);
                 return win._noTitleBarWindowID = m[0];
             }
-        } catch (err) { }
+        } catch (err) {
+        }
 
         // use xwininfo, take first child.
         let act = win.get_compositor_private();
@@ -219,12 +231,16 @@ var Decoration = class {
                 let regexp = new RegExp('(0x[0-9a-f]+) +"%s"'.format(win.title));
                 let m = str.match(regexp);
                 if (m && m[1]) {
+                    Utils.log_debug(`Window info: title='${win.get_title()}', type='${win.get_window_type()}', ` +
+                        `xid=${m[1]}'`);
                     return win._noTitleBarWindowID = m[1];
                 }
 
                 // Otherwise, just grab the child and hope for the best
                 m = str.split(/child(?:ren)?:/)[1].match(/0x[0-9a-f]+/);
                 if (m && m[0]) {
+                    Utils.log_debug(`Window info: title='${win.get_title()}', type='${win.get_window_type()}', ` +
+                        `xid=${m[0]}'`);
                     return win._noTitleBarWindowID = m[0];
                 }
             }
@@ -258,6 +274,8 @@ var Decoration = class {
 
                     // Is this our guy?
                     if (title && title[2] == win.title) {
+                        Utils.log_debug(`Window info: title='${win.get_title()}', type='${win.get_window_type()}', ` +
+                            `xid=${windowList[i]}'`);
                         return windowList[i];
                     }
                 }
@@ -265,14 +283,17 @@ var Decoration = class {
         }
 
         // debugging for when people find bugs..
+        Utils.log_debug(`Unable to determine xid for window title='${win.get_title()}', type='${win.get_window_type()}'`);
         return null;
     }
 
     _toggleTitlebar() {
         let win = global.display.focus_window;
 
-        if (!win)
+        if (!win) {
+            Utils.log_debug("Tried to toggle titlebar, but couldn't find focus window");
             return;
+        }
 
         if (win.get_maximized())
             this._setHideTitlebar(win, true);
@@ -286,7 +307,7 @@ var Decoration = class {
      *
      * @param {Meta.Window} win - the window to check the property
      */
-    _getOriginalState (win) {
+    _getOriginalState(win) {
         if (win._noTitleBarOriginalState !== undefined) {
             return win._noTitleBarOriginalState;
         }
@@ -316,9 +337,9 @@ var Decoration = class {
         if (m) {
             let state = !!parseInt(m[2]);
             cmd = ['xprop', '-id', id,
-                  '-f', '_NO_TITLE_BAR_ORIGINAL_STATE', '32c',
-                  '-set', '_NO_TITLE_BAR_ORIGINAL_STATE',
-                  (state ? '0x1' : '0x0')];
+                '-f', '_NO_TITLE_BAR_ORIGINAL_STATE', '32c',
+                '-set', '_NO_TITLE_BAR_ORIGINAL_STATE',
+                (state ? '0x1' : '0x0')];
             Util.spawn(cmd);
             return win._noTitleBarOriginalState = state
                 ? WindowState.HIDE_TITLEBAR
@@ -349,23 +370,17 @@ var Decoration = class {
     _setHideTitlebar(win, hide) {
         // Check if the window is a black/white-list
         if (Utils.isWindowIgnored(this._settings, win) && hide) {
+            Utils.log_debug(`Window '${win.get_title()}' ignored due to black/whitelist`);
             return;
         }
 
         // Make sure we save the state before altering it.
         this._getOriginalState(win);
 
-        /**
-         * Undecorate with xprop. Use _GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED.
-         * See (eg) mutter/src/window-props.c
-         */
-        let winXID = this._guessWindowXID(win);
-        if (winXID == null)
-            return;
         this._toggleDecorations(win, hide);
     }
 
-    _updateWindowAsync (win, cmd) {
+    _updateWindowAsync(win, cmd) {
         // Run xprop
         GLib.spawn_async(
             null,
@@ -384,7 +399,7 @@ var Decoration = class {
         let string = ByteArray.toString(result[1]);
         if (!string.match(/=/)) return;
 
-        string = string.split('=')[1].trim().split(',').map(function(part) {
+        string = string.split('=')[1].trim().split(',').map(function (part) {
             part = part.trim();
             return part.match(/\dx/) ? part : `0x${part}`
         });
@@ -417,21 +432,25 @@ var Decoration = class {
     _handleWindow(win) {
         let state = this._getMotifHints(win);
         return !win.is_client_decorated() && (state[2] != '0x2' && state[2] != '0x0');
-}
+    }
 
-    _toggleDecorations (win, hide) {
+    _toggleDecorations(win, hide) {
         let winId = this._guessWindowXID(win);
 
-        if (!this._handleWindow(win))
+        if (!this._handleWindow(win)) {
+            Utils.log_debug(`Window stays unhandled: '${win.get_title()}'`);
             return;
+        }
 
-        GLib.idle_add(0, Lang.bind(this, function() {
+        GLib.idle_add(0, Lang.bind(this, function () {
             let cmd = this._toggleDecorationsMotif(winId, hide);
+            Utils.log_debug(`Running toggle decorations for window '${win.get_title()}': '${cmd}'`);
             this._updateWindowAsync(win, cmd);
         }));
     }
 
-    _toggleDecorationsMotif (winId, hide) {
+    _toggleDecorationsMotif(winId, hide) {
+        Utils.log_debug(`Toggeling decorations for window '${winId}', hide=${hide}`);
         let prop = '_MOTIF_WM_HINTS';
         let flag = '0x2, 0x0, %s, 0x0, 0x0';
         let value = flag.format(hide ? '0x2' : '0x1');
@@ -529,7 +548,9 @@ var Decoration = class {
             // we need to add a Mainloop.idle_add, or else in _onWindowAdded the
             // window's maximized state is not correct yet.
             ws._noTitleBarWindowAddedId = ws.connect('window-added', Lang.bind(this, function (ws, win) {
-                Mainloop.idle_add(Lang.bind(this, function () { return this._onWindowAdded(ws, win); }));
+                Mainloop.idle_add(Lang.bind(this, function () {
+                    return this._onWindowAdded(ws, win);
+                }));
             }));
         }
 
@@ -539,7 +560,7 @@ var Decoration = class {
     /* CSS styles, for Wayland decorations
      */
 
-    _updateUserStyles () {
+    _updateUserStyles() {
         let styleContent = '';
 
         if (GLib.file_test(this._userStylesPath, GLib.FileTest.EXISTS)) {
@@ -554,7 +575,7 @@ var Decoration = class {
         return styleContent;
     }
 
-    _addUserStyles () {
+    _addUserStyles() {
         let styleContent = this._updateUserStyles();
         let styleFilePath = Me.path + '/stylesheet.css';
         let styleImport = "@import url('" + styleFilePath + "');\n";
@@ -565,7 +586,7 @@ var Decoration = class {
         GLib.file_set_contents(this._userStylesPath, styleImport + styleContent);
     }
 
-    _removeUserStyles () {
+    _removeUserStyles() {
         let styleContent = this._updateUserStyles();
         GLib.file_set_contents(this._userStylesPath, styleContent);
     }
@@ -576,7 +597,7 @@ var Decoration = class {
      */
     _cleanWorkspaces() {
         // disconnect window-added from workspaces
-        workspaces.forEach(function(ws) {
+        workspaces.forEach(function (ws) {
             ws.disconnect(ws._noTitleBarWindowAddedId);
             delete ws._noTitleBarWindowAddedId;
         });
@@ -586,8 +607,12 @@ var Decoration = class {
 
     _forEachWindow(callback) {
         global.get_window_actors()
-            .map(function (w) { return w.meta_window; })
-            .filter(function(w) { return w.window_type !== Meta.WindowType.DESKTOP; })
+            .map(function (w) {
+                return w.meta_window;
+            })
+            .filter(function (w) {
+                return w.window_type !== Meta.WindowType.DESKTOP;
+            })
             .forEach(callback);
     }
 

@@ -232,6 +232,7 @@ var Buttons = class {
         if (this._container) {
             this._disableButtonAutohide();
             this._container.destroy();
+            this._container = null
         }
     }
 
@@ -423,8 +424,7 @@ var Buttons = class {
             if (!allowDrag)
                 return Clutter.EVENT_PROPAGATE;
 
-            global.display.begin_grab_op(display,
-                                         dragWindow,
+            global.display.begin_grab_op(dragWindow,
                                          Meta.GrabOp.MOVING,
                                          false, /* pointer grab */
                                          true, /* frame action */
