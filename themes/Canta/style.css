@@ -14,8 +14,8 @@
 
 /* The style for each individual window button */
 .window-button {
-	width: 15px;
-	height: 15px;
+	width: 13px;
+	height: 13px;
 	background-size: 12px;
 }
 
@@ -36,7 +36,7 @@
 	padding: 0;
 	margin: 0 2px;
 	color: transparent;
-	border-radius: 10px;
+	border-radius: 9px;
 	background-color: rgba(0, 0, 0, 0.26);
 }
 
@@ -52,7 +52,7 @@
 	padding: 0;
 	margin: 0 2px;
 	color: transparent;
-	border-radius: 10px;
+	border-radius: 9px;
 	background-color: rgba(0, 0, 0, 0.26);
 }
 
@@ -69,7 +69,7 @@
 	padding: 0;
 	margin: 0 2px;
 	color: transparent;
-	border-radius: 10px;
+	border-radius: 9px;
 	background-color: #FFAC00;
 }
 
