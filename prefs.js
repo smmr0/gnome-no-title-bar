@@ -26,6 +26,13 @@ function buildPrefsWidget(){
     buildable.add_from_file( Me.dir.get_path() + '/Settings.ui' );
     let box = buildable.get_object('prefs_widget');
 
+    // Debug mode:
+    settings.bind('debug-mode',
+        buildable.get_object('debug_mode_switch'),
+        'active',
+        Gio.SettingsBindFlags.DEFAULT
+    );
+
     // Monitors:
     settings.bind('only-main-monitor',
         buildable.get_object('only_main_monitor_switch'),

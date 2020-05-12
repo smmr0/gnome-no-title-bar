@@ -17,15 +17,39 @@ var ws_manager = global.screen ? global.screen : global.workspace_manager;
 var display = global.screen ? global.screen : global.display;
 
 let settings = null;
+let debug_mode = undefined;
+let _debug_mode_listener_id;
 
 function enable() {
     settings = Convenience.getSettings();
+    this._debug_mode_listener_id = this.settings.connect(
+        'changed::debug-mode',
+        function() {
+            debug_mode = settings.get_boolean('debug-mode');
+            log("Debug mode set to " + debug_mode);
+        }
+    );
     return settings;
 }
 
 function disable() {
+    this.settings.disconnect(this._debug_mode_listener_id);
+    this._debug_mode_listener_id = null;
     settings.run_dispose();
     settings = null;
+}
+
+function log_debug(message) {
+    if (debug_mode === undefined) {
+        debug_mode = settings.get_boolean('debug-mode');
+    }
+    if (debug_mode) {
+        log(message);
+    }
+}
+
+function log(message) {
+    global.log("[no-title-bar]" + message);
 }
 
 // Get the window to display the title bar for (buttons etc) or to drag from the top panel
