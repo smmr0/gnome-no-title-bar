@@ -6,7 +6,7 @@ An extension for GNOME Shell that merges the activity bar and the title bar of m
 
 ```
 make install
-gnome-shell-extension-tool -e no-title-bar@jonaspoehler.de
+gnome-extensions enable no-title-bar@jonaspoehler.de
 ```
 
 Restart GNOME Shell by pressing <kbd>Alt</kbd>+<kbd>F2</kbd> and entering <kbd>r</kbd>.

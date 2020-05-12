@@ -84,6 +84,20 @@ var Buttons = class {
             })
         );
 
+        this._themeSwitchId = this._settings.connect(
+            'changed::theme',
+            Lang.bind(this, function () {
+                this._loadTheme();
+            })
+        );
+
+        this._autoThemeId = this._settings.connect(
+            'changed::automatic-theme',
+            Lang.bind(this, function () {
+                this._loadTheme();
+            })
+        );
+
         if (this._settings.get_enum('button-position') !== Position.HIDDEN)
             this._enable();
         else
@@ -322,9 +336,7 @@ var Buttons = class {
         St.ThemeContext.get_for_stage(global.stage).get_theme().load_stylesheet(cssFile);
 
         // Force style update.
-        actors.forEach(function(actor) {
-            actor.grab_key_focus();
-        });
+        Main.loadTheme();
 
         this._activeCSS = cssPath;
     }
@@ -347,7 +359,8 @@ var Buttons = class {
             visible = false;
             let win = Utils.getWindow();
             if (win) {
-                visible = win._noTitleBarOriginalState === WindowState.DEFAULT
+                visible = (win._noTitleBarOriginalState !== undefined
+                    && win._noTitleBarOriginalState === WindowState.DEFAULT)
                     || this._settings.get_boolean('buttons-for-all-win');
                 if (visible) {
                     visible = !Utils.isWindowIgnored(this._settings, win);
@@ -506,6 +519,16 @@ var Buttons = class {
         if (this._snappedId) {
             this._settings.disconnect(this._snappedId);
             this._snappedId = 0;
+        }
+
+        if (this._themeSwitchId) {
+            this._settings.disconnect(this._themeSwitchId);
+            this._themeSwitchId = 0;
+        }
+
+        if (this._autoThemeId) {
+            this._settings.disconnect(this._autoThemeId);
+            this._autoThemeId = 0;
         }
     }
 }

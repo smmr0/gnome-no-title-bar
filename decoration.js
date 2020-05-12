@@ -21,16 +21,15 @@ const IgnoreList = {
     DISABLED:  0,
     WHITELIST: 1,
     BLACKLIST: 2,
-}
+};
 
 var WindowState = {
     DEFAULT: 'default',
     HIDE_TITLEBAR: 'hide_titlebar',
     UNDECORATED: 'undecorated',
     UNKNOWN: 'unknown'
-}
+};
 
-let appSys = Shell.AppSystem.get_default();
 let workspaces = [];
 
 var Decoration = class {
@@ -39,12 +38,6 @@ var Decoration = class {
         this._changeWorkspaceID = 0;
         this._windowEnteredID = 0;
         this._settings = settings;
-        this._useMotifHints = Utils.versionCompare(Config.PACKAGE_VERSION, '3.30.0') > 0;
-        this._isWaylandComp = Meta.is_wayland_compositor();
-
-        // For Gnome Shell < 3.24, we need to unmax and maximize windows again,
-        // to redraw the window with no title bar.
-        this._forceMaxUnmax = Utils.versionCompare(Config.PACKAGE_VERSION, '3.24') < 0;
 
         this._enable();
 
@@ -374,29 +367,13 @@ var Decoration = class {
 
     _updateWindowAsync (win, cmd) {
         // Run xprop
-        let [success, pid] = GLib.spawn_async(
+        GLib.spawn_async(
             null,
             cmd,
             null,
             GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
             null
         );
-
-        // After xprop completes, unmaximize and remaximize any window
-        // that is already maximized. It seems that setting the xprop on
-        // a window that is already maximized doesn't actually take
-        // effect immediately but it needs a focuse change or other
-        // action to force a relayout. Doing unmaximize and maximize
-        // here seems to be an uninvasive way to handle this. This needs
-        // to happen _after_ xprop completes.
-        GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function () {
-            const MAXIMIZED = Meta.MaximizeFlags.BOTH;
-            let flags = win.get_maximized();
-            if (this._forceMaxUnmax && flags == MAXIMIZED) {
-                win.unmaximize(MAXIMIZED);
-                win.maximize(MAXIMIZED);
-            }
-        }));
     }
 
     _getHintValue(win, hint) {
@@ -438,18 +415,9 @@ var Decoration = class {
     }
 
     _handleWindow(win) {
-        let handleWin = false;
-
-        if (this._useMotifHints) {
-            let state = this._getMotifHints(win);
-            handleWin = !win.is_client_decorated();
-            handleWin = handleWin && (state[2] != '0x2' && state[2] != '0x0');
-        } else {
-            handleWin = win.decorated;
-        }
-
-        return handleWin;
-    }
+        let state = this._getMotifHints(win);
+        return !win.is_client_decorated() && (state[2] != '0x2' && state[2] != '0x0');
+}
 
     _toggleDecorations (win, hide) {
         let winId = this._guessWindowXID(win);
@@ -458,28 +426,15 @@ var Decoration = class {
             return;
 
         GLib.idle_add(0, Lang.bind(this, function() {
-            let cmd = [];
-            if (this._useMotifHints)
-                cmd = this._toggleDecorationsMotif(winId, hide);
-            else
-                cmd = this._toggleDecorationsGtk(winId, hide);
+            let cmd = this._toggleDecorationsMotif(winId, hide);
             this._updateWindowAsync(win, cmd);
         }));
-    }
-
-    _toggleDecorationsGtk (winId, hide) {
-        let prop = '_GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED';
-        let value = hide ? '0x1' : '0x0';
-
-        return ['xprop', '-id', winId, '-f', prop, '32c', '-set', prop, value];
     }
 
     _toggleDecorationsMotif (winId, hide) {
         let prop = '_MOTIF_WM_HINTS';
         let flag = '0x2, 0x0, %s, 0x0, 0x0';
-        let value = hide
-            ? flag.format(this._isWaylandComp ? '0x2' : '0x0')
-            : flag.format('0x1');
+        let value = flag.format(hide ? '0x2' : '0x1');
 
         return ['xprop', '-id', winId, '-f', prop, '32c', '-set', prop, value];
     }
