@@ -387,6 +387,8 @@ var Buttons = class {
             }
         }
 
+        Utils.log_debug(`Visibility updates of buttons: now is ${visible}`);
+
         actors.forEach(function (actor, i) {
             if (!boxes[i].get_children().length) {
                 return;

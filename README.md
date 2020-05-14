@@ -10,6 +10,7 @@ gnome-extensions enable no-title-bar@jonaspoehler.de
 ```
 
 Restart GNOME Shell by pressing <kbd>Alt</kbd>+<kbd>F2</kbd> and entering <kbd>r</kbd>.
+**Note**: GNOME Shell under Wayland doesn't support restarting, so you might need to login again instead.
 
 ## Dependencies
 

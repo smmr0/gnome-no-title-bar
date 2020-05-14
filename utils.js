@@ -49,7 +49,7 @@ function log_debug(message) {
 }
 
 function log(message) {
-    global.log("[no-title-bar]" + message);
+    global.log("[no-title-bar] " + message);
 }
 
 // Get the window to display the title bar for (buttons etc) or to drag from the top panel
