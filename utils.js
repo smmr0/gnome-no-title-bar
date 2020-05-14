@@ -22,7 +22,7 @@ let _debug_mode_listener_id;
 
 function enable() {
     settings = Convenience.getSettings();
-    this._debug_mode_listener_id = this.settings.connect(
+    _debug_mode_listener_id = settings.connect(
         'changed::debug-mode',
         function() {
             debug_mode = settings.get_boolean('debug-mode');
@@ -33,8 +33,8 @@ function enable() {
 }
 
 function disable() {
-    this.settings.disconnect(this._debug_mode_listener_id);
-    this._debug_mode_listener_id = null;
+    settings.disconnect(_debug_mode_listener_id);
+    _debug_mode_listener_id = null;
     settings.run_dispose();
     settings = null;
 }

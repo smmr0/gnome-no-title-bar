@@ -27,17 +27,20 @@ let buttons = null;
 let appMenu = null;
 
 function init() {
+    Utils.log("Init");
 }
 
 function enable() {
+    Utils.log("Enabling extension");
     let settings = Utils.enable();
 
     buttons = new Buttons.Buttons(settings);
-    decoration = new Decoration.Decoration(settings);
     appMenu = new AppMenu.AppMenu(settings);
+    decoration = new Decoration.Decoration(settings);
 }
 
 function disable() {
+    Utils.log("Disabling extension");
     appMenu.destroy();
     appMenu = null;
     decoration.destroy();

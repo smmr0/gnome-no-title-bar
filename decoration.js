@@ -1,176 +1,312 @@
-const Lang = imports.lang;
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Utils = Me.imports.utils;
+
 const Main = imports.ui.main;
 const Mainloop = imports.mainloop;
 
 const GLib = imports.gi.GLib;
 const Meta = imports.gi.Meta;
-const Shell = imports.gi.Shell;
-
-const Config = imports.misc.config;
-const Util = imports.misc.util;
 
 const ByteArray = imports.byteArray;
 
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-const Utils = Me.imports.utils;
+const ws_manager = global.workspace_manager;
 
-const ws_manager = Utils.ws_manager;
-const display = Utils.display;
-
-const IgnoreList = {
-    DISABLED: 0,
-    WHITELIST: 1,
-    BLACKLIST: 2,
-};
-
-var WindowState = {
+const WindowState = {
     DEFAULT: 'default',
-    HIDE_TITLEBAR: 'hide_titlebar',
+    HIDE_TITLEBAR: 'hide-titlebar',
     UNDECORATED: 'undecorated',
-    UNKNOWN: 'unknown'
-};
-
-let workspaces = [];
+    CLIENT_DECORATED: 'client-decorated'
+}
 
 var Decoration = class {
 
     constructor(settings) {
-        this._changeWorkspaceID = 0;
-        this._windowEnteredID = 0;
         this._settings = settings;
+        this._changeWorkspaceID = null;
+        this._changeMonitorsID = null;
+        this._focusWindowID = null;
+        this._sizeChangeID = null;
+        this._onlyMainMonitorID = null;
+        this._ignoreListID = null;
+        this._ignoreListTypeID = null;
+
+        this._workspaces = [];
 
         this._enable();
-
-        this._changeMonitorsID = Meta.MonitorManager.get().connect(
-            'monitors-changed',
-            Lang.bind(this, function () {
-                Utils.log_debug("Monitors changed, reloading");
-                this._disable();
-                this._enable();
-            })
-        );
-
-        this._focusWindowID = global.display.connect(
-            'notify::focus-window',
-            Lang.bind(this, function () {
-                Utils.log_debug("Focus changed, toggling titlebar");
-                this._toggleTitlebar();
-            })
-        );
-
-        this._sizeChangeID = global.window_manager.connect(
-            'size-change',
-            Lang.bind(this, function () {
-                Utils.log_debug("Size changed, toggling titlebar");
-                this._toggleTitlebar();
-            })
-        );
-
-        this._onlyMainMonitorID = this._settings.connect(
-            'changed::only-main-monitor',
-            Lang.bind(this, function () {
-                this._disable();
-                this._enable();
-            })
-        );
-
-        this._ignoreListID = this._settings.connect(
-            'changed::ignore-list',
-            Lang.bind(this, function () {
-                this._disable();
-                this._enable();
-            })
-        );
-
-        this._ignoreListTypeID = this._settings.connect(
-            'changed::ignore-list-type',
-            Lang.bind(this, function () {
-                this._disable();
-                this._enable();
-            })
-        );
     }
 
     _enable() {
-        Utils.log_debug("Enabling extension");
-        // Connect events
-        this._changeWorkspaceID = ws_manager.connect('notify::n-workspaces', Lang.bind(this, this._onChangeNWorkspaces));
-        this._windowEnteredID = display.connect('window-entered-monitor', Lang.bind(this, this._windowEnteredMonitor));
-
+        this._changeWorkspaceID = ws_manager.connect('notify::n-workspaces', () => this._nWorkspacesChanged());
+        this._windowEnteredID = global.display.connect(
+            'window-entered-monitor',
+            (screen, monitorIndex, win) => this._toggleTitlebar(win)
+        );
 
         // CSS style for Wayland decorations
         this._userStylesPath = GLib.get_user_config_dir() + '/gtk-3.0/gtk.css';
-        Mainloop.idle_add(Lang.bind(this, this._addUserStyles));
+        Mainloop.idle_add(() => this._addUserStyles());
 
-        /**
-         * Go through already-maximised windows & undecorate.
-         * This needs a delay as the window list is not yet loaded
-         * when the extension is loaded.
-         * Also, connect up the 'window-added' event.
-         * Note that we do not connect this before the onMaximise loop
-         * because when one restarts the gnome-shell, window-added gets
-         * fired for every currently-existing window, and then
-         * these windows will have onMaximise called twice on them.
-         */
-        Mainloop.idle_add(Lang.bind(this, function () {
-            this._forEachWindow(Lang.bind(this, function (win) {
-                this._onWindowAdded(null, win);
-            }));
+        Mainloop.idle_add(() => {
+            global.get_window_actors()
+                .map(win => win.meta_window)
+                .forEach(win => this._onWindowAdded(win))
+            this._nWorkspacesChanged();
+        });
 
-            this._onChangeNWorkspaces();
-            return false;
-        }));
+        this._changeMonitorsID = Meta.MonitorManager.get().connect('monitors-changed', () => {
+            Utils.log_debug("Monitors changed, reloading");
+            this._disable();
+            this._enable();
+        });
+
+        this._focusWindowID = global.display.connect('notify::focus-window', () => {
+            Utils.log_debug("Focus changed, toggling titlebar");
+            this._toggleTitlebar();
+        });
+
+        this._sizeChangeID = global.window_manager.connect('size-change', () => {
+            Utils.log_debug("Size changed, toggling titlebar");
+            this._toggleTitlebar();
+        })
+
+        this._onlyMainMonitorID = this._settings.connect('changed::only-main-monitor', () => {
+            this._disable();
+            this._enable();
+        });
+
+        this._ignoreListID = this._settings.connect('changed::ignore-list', () => {
+            this._disable();
+            this._enable();
+        });
+
+        this._ignoreListTypeID = this._settings.connect('changed::ignore-list-type', () => {
+            this._disable();
+            this._enable();
+        });
 
         this._isEnabled = true;
     }
 
+    destroy() {
+        this._disable();
+    }
+
     _disable() {
-        if (this._changeWorkspaceID) {
+        if (this._changeWorkspaceID != null) {
             ws_manager.disconnect(this._changeWorkspaceID);
-            this._changeWorkspaceID = 0;
+            this._changeWorkspaceID = null;
         }
 
-        if (this._windowEnteredID) {
-            display.disconnect(this._windowEnteredID);
-            this._windowEnteredID = 0;
+        if (this._windowEnteredID != null) {
+            global.display.disconnect(this._windowEnteredID);
+            this._windowEnteredID = null;
         }
 
-        if (this._focusWindowID) {
-            global.display.disconnect(this._focusWindowID);
-            this._focusWindowID = 0;
-        }
+        this._workspaces.forEach(ws => {
+            ws.disconnect(ws._noTitleBarWindowAddedId);
+            delete ws._noTitleBarWindowAddedId;
+        })
+        this._workspaces = []
 
-        if (this._sizeChangeID) {
-            global.window_manager.disconnect(this._sizeChangeID);
-            this._sizeChangeID = 0;
-        }
+        global.get_window_actors()
+            .map(w => w.meta_window)
+            .forEach(win => {
+                let origState = this._getOriginalState(win);
+                if (origState === WindowState.DEFAULT) {
+                    this._setHideTitlebar(win, false);
+                }
 
-        this._cleanWorkspaces();
+                if (win._noTitleBarOriginalState) {
+                    delete win._noTitleBarOriginalState;
+                }
 
-        this._forEachWindow(Lang.bind(this, function (win) {
-            let state = this._getOriginalState(win);
-            if (state == WindowState.DEFAULT) {
-                this._setHideTitlebar(win, false);
-            }
-
-            delete win._noTitleBarOriginalState;
-        }));
+                if (win._noTitleBarWindowID) {
+                    delete win._noTitleBarWindowID;
+                }
+            });
 
         // Remove CSS Styles
         this._removeUserStyles();
 
-        this._isEnabled = false;
+        if (this._changeMonitorsID != null) {
+            Meta.MonitorManager.get().disconnect(this._changeMonitorsID);
+            this._changeMonitorsID = null;
+        }
+
+        if (this._focusWindowID != null) {
+            global.display.disconnect(this._focusWindowID);
+            this._focusWindowID = null;
+        }
+
+        if (this._sizeChangeID != null) {
+            global.window_manager.disconnect(this._sizeChangeID);
+            this._sizeChangeID = null;
+        }
+
+        if (this._onlyMainMonitorID != null) {
+            this._settings.disconnect(this._onlyMainMonitorID);
+            this._onlyMainMonitorID = null;
+        }
+
+        if (this._ignoreListID != null) {
+            this._settings.disconnect(this._ignoreListID);
+            this._ignoreListID = null;
+        }
+
+        if (this._ignoreListTypeID != null) {
+            this._settings.disconnect(this._ignoreListTypeID);
+            this._ignoreListTypeID = null;
+        }
     }
 
-    destroy() {
-        this._disable();
-        Meta.MonitorManager.get().disconnect(this._changeMonitorsID);
-        this._settings.disconnect(this._onlyMainMonitorID);
-        this._settings.disconnect(this._ignoreListID);
-        this._settings.disconnect(this._ignoreListTypeID);
-        this._onlyMainMonitorID = null;
-        this._ignoreListID = null;
-        this._ignoreListTypeID = null;
+    _nWorkspacesChanged() {
+        for (let i = 0; i < ws_manager.n_workspaces; i++) {
+            let ws = ws_manager.get_workspace_by_index(i);
+            if (!this._workspaces.includes(ws)) {
+                Utils.log_debug(`Workspace with index '${ws.workspace_index}' added`);
+                this._workspaces.push(ws);
+                // we need to add a Mainloop.idle_add, or else in _onWindowAdded the
+                // window's maximized state is not correct yet.
+                ws._noTitleBarWindowAddedId = ws.connect('window-added', (ws, win) => {
+                    Mainloop.idle_add(() => this._onWindowAdded(win));
+                });
+            }
+        }
+    }
+
+    _shouldHideTitlebar(win) {
+        let hide = [3, 2].includes(win.get_maximized());
+        if (hide && this._settings.get_boolean('only-main-monitor')) {
+            hide = win.get_monitor() === Main.layoutManager.primaryIndex;
+        }
+
+        return hide;
+    }
+
+    _setHideTitlebar(win, hide) {
+        if (Utils.isWindowIgnored(this._settings, win)) {
+            Utils.log_debug(`Window '${win.get_title()}' ignored due to black/whitelist`);
+            return;
+        }
+
+        if (win._noTitlebarHideState) {
+            if ((hide && win._noTitlebarHideState === WindowState.HIDE_TITLEBAR)
+                || (!hide && win._noTitlebarHideState !== WindowState.HIDE_TITLEBAR)) {
+                Utils.log_debug(`Window '${win.get_title()}' already has correct hide state: ${win._noTitlebarHideState}`);
+                return;
+            }
+        }
+
+        let originalState = this._getOriginalState(win);
+
+        if (originalState === WindowState.DEFAULT) {
+            this._toggleDecorations(win, hide);
+        } else {
+            Utils.log_debug(`Skipping window '${win.get_title()}' because its window state was not default`);
+        }
+    }
+
+    _getOriginalState(win) {
+        if (win._noTitleBarOriginalState) {
+            return win._noTitleBarOriginalState;
+        }
+
+        if (!win.decorated) {
+            Utils.log_debug(`Window '${win.get_title()}' is undecorated`);
+            return win._noTitleBarOriginalState = WindowState.UNDECORATED;
+        }
+
+        if (win.is_client_decorated()) {
+            Utils.log_debug(`Window '${win.get_title()}' is client decorated`);
+            return win._noTitleBarOriginalState = WindowState.CLIENT_DECORATED;
+        }
+
+        let winId = this._guessWindowXID(win);
+
+        let xprops = GLib.spawn_command_line_sync(`xprop -id ${winId}`);
+        if (!xprops[0]) {
+            Utils.log_debug(`Unable to determine windows '${win.get_title()}' original state`);
+            return win._noTitleBarOriginalState = WindowState.UNKNOWN;
+        }
+
+        return win._noTitleBarOriginalState = WindowState.DEFAULT;
+    }
+
+    _toggleDecorations(win, hide) {
+        let windId = this._guessWindowXID(win);
+        let prop = '_MOTIF_WM_HINTS';
+        let value = '0x2, 0x0, %s, 0x0, 0x0'.format(hide ? '0x2' : '0x1');
+
+        GLib.spawn_command_line_sync(`xprop -id ${windId} -f ${prop} 32c -set ${prop} "${value}"`);
+        if (!hide && !win.titlebar_is_onscreen()) {
+            Utils.log_debug(`Shoving titlebar onscreen for window '${win.get_title()}'`);
+            win.shove_titlebar_onscreen();
+        }
+    }
+
+    _toggleTitlebar(win) {
+        win = (win !== undefined) ? win : global.display.focus_window;
+
+        if (!win) {
+            Utils.log_debug("Tried to toggle titlebar, but couldn't find focus window");
+            return;
+        }
+
+        if (!win.decorated) {
+            Utils.log_debug(`Window '${win.get_title()}' is not decorated, skipping it`);
+            return;
+        }
+
+        if (win.get_window_type() !== Meta.WindowType.NORMAL) {
+            Utils.log_debug(`Window '${win.get_title()}' is not a normal window, skipping it`);
+            return;
+        }
+
+        let hide = this._shouldHideTitlebar(win);
+
+        Utils.log_debug(`_toggleTitlebar: Window '${win.get_title()}' is maximized=${hide}`);
+        this._setHideTitlebar(win, hide);
+    }
+
+    _onWindowAdded(win, retry) {
+        if (win.window_type !== Meta.WindowType.NORMAL) {
+            return;
+        }
+
+        if (win._noTitleBarOriginalState !== undefined) {
+            return;
+        }
+
+        /**
+         * Newly-created windows are added to the workspace before
+         * the compositor knows about them: get_compositor_private() is null.
+         * Additionally things like .get_maximized() aren't properly done yet.
+         * (see workspace.js _doAddWindow)
+         */
+        if (!win.get_compositor_private()) {
+            retry = (retry !== undefined) ? retry : 0;
+            if (retry > 3) {
+                return;
+            }
+
+            Mainloop.idle_add(() => this._onWindowAdded(win, retry + 1));
+            return false;
+        }
+
+        retry = 2;
+
+        Mainloop.idle_add(() => {
+            if (!this._isEnabled) {
+                return;
+            }
+
+            let id = this._guessWindowXID(win);
+            if (!id) {
+                return;
+            }
+
+            this._toggleTitlebar(win);
+        });
     }
 
     /**
@@ -195,8 +331,7 @@ var Decoration = class {
     _guessWindowXID(win) {
         // We cache the result so we don't need to redetect.
         if (win._noTitleBarWindowID) {
-            Utils.log_debug(`Window info: title='${win.get_title()}', type='${win.get_window_type()}', ` +
-                `xid=${win._noTitleBarWindowID}'`);
+            Utils.log_debug(`Window info (cached): title='${win.get_title()}' xid=${win._noTitleBarWindowID}'`);
             return win._noTitleBarWindowID;
         }
 
@@ -287,276 +422,6 @@ var Decoration = class {
         return null;
     }
 
-    _toggleTitlebar() {
-        let win = global.display.focus_window;
-
-        if (!win) {
-            Utils.log_debug("Tried to toggle titlebar, but couldn't find focus window");
-            return;
-        }
-
-        if (win.get_maximized())
-            this._setHideTitlebar(win, true);
-        else
-            this._setHideTitlebar(win, false);
-    }
-
-    /**
-     * Get the value of _GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED before
-     * no-title-bar did its magic.
-     *
-     * @param {Meta.Window} win - the window to check the property
-     */
-    _getOriginalState(win) {
-        if (win._noTitleBarOriginalState !== undefined) {
-            return win._noTitleBarOriginalState;
-        }
-
-        if (!win.decorated) {
-            return win._noTitleBarOriginalState = WindowState.UNDECORATED;
-        }
-
-        let id = this._guessWindowXID(win);
-        let cmd = 'xprop -id ' + id;
-
-        let xprops = GLib.spawn_command_line_sync(cmd);
-        if (!xprops[0]) {
-            return win._noTitleBarOriginalState = WindowState.UNKNOWN;
-        }
-
-        let str = ByteArray.toString(xprops[1]);
-        let m = str.match(/^_NO_TITLE_BAR_ORIGINAL_STATE\(CARDINAL\) = ([0-9]+)$/m);
-        if (m) {
-            let state = !!parseInt(m[1]);
-            return win._noTitleBarOriginalState = state
-                ? WindowState.HIDE_TITLEBAR
-                : WindowState.DEFAULT;
-        }
-
-        m = str.match(/^_GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED(\(CARDINAL\))? = ([0-9]+)$/m);
-        if (m) {
-            let state = !!parseInt(m[2]);
-            cmd = ['xprop', '-id', id,
-                '-f', '_NO_TITLE_BAR_ORIGINAL_STATE', '32c',
-                '-set', '_NO_TITLE_BAR_ORIGINAL_STATE',
-                (state ? '0x1' : '0x0')];
-            Util.spawn(cmd);
-            return win._noTitleBarOriginalState = state
-                ? WindowState.HIDE_TITLEBAR
-                : WindowState.DEFAULT;
-        }
-
-        // GTK uses the _GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED atom to indicate that the
-        // title bar should be hidden when maximized. If we can't find this atom, the
-        // window uses the default behavior
-        return win._noTitleBarOriginalState = WindowState.DEFAULT;
-    }
-
-    /**
-     * Tells the window manager to hide the titlebar on maximised windows.
-     *
-     * Does this by setting the _GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED hint - means
-     * I can do it once and forget about it, rather than tracking maximize/unmaximize
-     * events.
-     *
-     * **Caveat**: doesn't work with Ubuntu's Ambiance and Radiance window themes -
-     * my guess is they don't respect or implement this property.
-     *
-     * I don't know how to read the inital value, so I'm not sure how to resore it.
-     *
-     * @param {Meta.Window} win - window to set the HIDE_TITLEBAR_WHEN_MAXIMIZED property of.
-     * @param {boolean} hide - whether to hide the titlebar or not.
-     */
-    _setHideTitlebar(win, hide) {
-        // Check if the window is a black/white-list
-        if (Utils.isWindowIgnored(this._settings, win) && hide) {
-            Utils.log_debug(`Window '${win.get_title()}' ignored due to black/whitelist`);
-            return;
-        }
-
-        // Make sure we save the state before altering it.
-        this._getOriginalState(win);
-
-        this._toggleDecorations(win, hide);
-    }
-
-    _updateWindowAsync(win, cmd) {
-        // Run xprop
-        GLib.spawn_async(
-            null,
-            cmd,
-            null,
-            GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-            null
-        );
-    }
-
-    _getHintValue(win, hint) {
-        let winId = this._guessWindowXID(win);
-        if (!winId) return;
-
-        let result = GLib.spawn_command_line_sync(`xprop -id ${winId} ${hint}`);
-        let string = ByteArray.toString(result[1]);
-        if (!string.match(/=/)) return;
-
-        string = string.split('=')[1].trim().split(',').map(function (part) {
-            part = part.trim();
-            return part.match(/\dx/) ? part : `0x${part}`
-        });
-
-        return string;
-    }
-
-    _setHintValue(win, hint, value) {
-        let winId = this._guessWindowXID(win);
-        if (!winId) return;
-
-        Util.spawn(['xprop', '-id', winId, '-f', hint, '32c', '-set', hint, value]);
-    }
-
-    _getMotifHints(win) {
-        if (!win._noTitleBarOriginalState) {
-            let state = this._getHintValue(win, '_NO_TITLE_BAR_ORIGINAL_STATE');
-            if (!state) {
-                state = this._getHintValue(win, '_MOTIF_WM_HINTS');
-                state = state || ['0x2', '0x0', '0x1', '0x0', '0x0'];
-
-                this._setHintValue(win, '_NO_TITLE_BAR_ORIGINAL_STATE', state.join(', '));
-            }
-            win._noTitleBarOriginalState = state;
-        }
-
-        return win._noTitleBarOriginalState;
-    }
-
-    _handleWindow(win) {
-        let state = this._getMotifHints(win);
-        return !win.is_client_decorated() && (state[2] != '0x2' && state[2] != '0x0');
-    }
-
-    _toggleDecorations(win, hide) {
-        let winId = this._guessWindowXID(win);
-
-        if (!this._handleWindow(win)) {
-            Utils.log_debug(`Window stays unhandled: '${win.get_title()}'`);
-            return;
-        }
-
-        GLib.idle_add(0, Lang.bind(this, function () {
-            let cmd = this._toggleDecorationsMotif(winId, hide);
-            Utils.log_debug(`Running toggle decorations for window '${win.get_title()}': '${cmd}'`);
-            this._updateWindowAsync(win, cmd);
-        }));
-    }
-
-    _toggleDecorationsMotif(winId, hide) {
-        Utils.log_debug(`Toggeling decorations for window '${winId}', hide=${hide}`);
-        let prop = '_MOTIF_WM_HINTS';
-        let flag = '0x2, 0x0, %s, 0x0, 0x0';
-        let value = flag.format(hide ? '0x2' : '0x1');
-
-        return ['xprop', '-id', winId, '-f', prop, '32c', '-set', prop, value];
-    }
-
-    /**** Callbacks ****/
-    /**
-     * Callback when a window is added in any of the workspaces.
-     * This includes a window switching to another workspace.
-     *
-     * If it is a window we already know about, we do nothing.
-     *
-     * Otherwise, we activate the hide title on maximize feature.
-     *
-     * @param {Meta.Window} win - the window that was added.
-     *
-     * @see undecorate
-     */
-    _onWindowAdded(ws, win, retry) {
-        if (win.window_type === Meta.WindowType.DESKTOP ||
-            win.window_type === Meta.WindowType.MODAL_DIALOG) {
-            return false;
-        }
-
-        // If the window is simply switching workspaces, it will trigger a
-        // window-added signal. We don't want to reprocess it then because we already
-        // have.
-        if (win._noTitleBarOriginalState !== undefined) {
-            return false;
-        }
-
-        /**
-         * Newly-created windows are added to the workspace before
-         * the compositor knows about them: get_compositor_private() is null.
-         * Additionally things like .get_maximized() aren't properly done yet.
-         * (see workspace.js _doAddWindow)
-         */
-        if (!win.get_compositor_private()) {
-            retry = (retry !== undefined) ? retry : 0;
-            if (retry > 3) {
-                return false;
-            }
-
-            Mainloop.idle_add(Lang.bind(function () {
-                this._onWindowAdded(ws, win, retry + 1);
-                return false;
-            }));
-            return false;
-        }
-
-        retry = 3;
-        Mainloop.idle_add(Lang.bind(this, function () {
-            // Need to check if the extension is still enabled, as this is added
-            // with "idle" delay
-            if (!this._isEnabled) {
-                return false;
-            }
-
-            let id = this._guessWindowXID(win);
-            if (!id) {
-                if (--retry) {
-                    return true;
-                }
-
-                return false;
-            }
-
-            let hide = win.get_maximized();
-            if (this._settings.get_boolean('only-main-monitor'))
-                hide = win.is_on_primary_monitor();
-            this._setHideTitlebar(win, hide);
-            return false;
-        }));
-
-        return false;
-    }
-
-    /**
-     * Callback whenever the number of workspaces changes.
-     *
-     * We ensure that we are listening to the 'window-added' signal on each of
-     * the workspaces.
-     *
-     * @see _onWindowAdded
-     */
-    _onChangeNWorkspaces() {
-        this._cleanWorkspaces();
-
-        let i = ws_manager.n_workspaces;
-        while (i--) {
-            let ws = ws_manager.get_workspace_by_index(i);
-            workspaces.push(ws);
-            // we need to add a Mainloop.idle_add, or else in _onWindowAdded the
-            // window's maximized state is not correct yet.
-            ws._noTitleBarWindowAddedId = ws.connect('window-added', Lang.bind(this, function (ws, win) {
-                Mainloop.idle_add(Lang.bind(this, function () {
-                    return this._onWindowAdded(ws, win);
-                }));
-            }));
-        }
-
-        return false;
-    }
-
     /* CSS styles, for Wayland decorations
      */
 
@@ -590,37 +455,4 @@ var Decoration = class {
         let styleContent = this._updateUserStyles();
         GLib.file_set_contents(this._userStylesPath, styleContent);
     }
-
-
-    /**
-     * Utilities
-     */
-    _cleanWorkspaces() {
-        // disconnect window-added from workspaces
-        workspaces.forEach(function (ws) {
-            ws.disconnect(ws._noTitleBarWindowAddedId);
-            delete ws._noTitleBarWindowAddedId;
-        });
-
-        workspaces = [];
-    }
-
-    _forEachWindow(callback) {
-        global.get_window_actors()
-            .map(function (w) {
-                return w.meta_window;
-            })
-            .filter(function (w) {
-                return w.window_type !== Meta.WindowType.DESKTOP;
-            })
-            .forEach(callback);
-    }
-
-    _windowEnteredMonitor(metaScreen, monitorIndex, metaWin) {
-        let hide = metaWin.get_maximized();
-        if (this._settings.get_boolean('only-main-monitor'))
-            hide = monitorIndex == Main.layoutManager.primaryIndex;
-        this._setHideTitlebar(metaWin, hide);
-    }
-
 }

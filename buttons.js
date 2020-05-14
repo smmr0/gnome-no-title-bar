@@ -18,27 +18,31 @@ const WindowState = Me.imports.decoration.WindowState;
 const display = Utils.display;
 
 const Position = {
-    BEFORE_NAME:        0,
-    AFTER_NAME:         1,
+    BEFORE_NAME: 0,
+    AFTER_NAME: 1,
     WITHIN_STATUS_AREA: 2,
     BEFORE_STATUS_AREA: 3,
-    AFTER_STATUS_AREA:  4,
-    HIDDEN:             5
+    AFTER_STATUS_AREA: 4,
+    HIDDEN: 5
 }
 
 // Functions for changing opacity (to act as auto-hiding)
 function b_hidden(box) {
-  Tweener.addTween(box,
-                   { opacity: 0,
-                     time: 1/6,
-                     transition: 'linear'});
+    Tweener.addTween(box,
+        {
+            opacity: 0,
+            time: 1 / 6,
+            transition: 'linear'
+        });
 }
 
 function b_shown(box) {
-  Tweener.addTween(box,
-                   { opacity: 255,
-                     time: 1/6,
-                     transition: 'linear'});
+    Tweener.addTween(box,
+        {
+            opacity: 255,
+            time: 1 / 6,
+            transition: 'linear'
+        });
 }
 
 /**
@@ -63,7 +67,7 @@ var Buttons = class {
 
         this._settingsId = this._settings.connect(
             'changed::button-position',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
                 this._disable();
                 if (this._settings.get_enum('button-position') !== Position.HIDDEN)
                     this._enable();
@@ -72,14 +76,14 @@ var Buttons = class {
 
         this._buttonsForAllWinId = this._settings.connect(
             'changed::buttons-for-all-win',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
                 this._updateVisibility();
             })
         );
 
         this._snappedId = this._settings.connect(
             'changed::buttons-for-snapped',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
                 this._updateVisibility();
             })
         );
@@ -109,16 +113,16 @@ var Buttons = class {
         this._destroyButtons();
 
         actors = [
-            new St.Bin({ style_class: 'box-bin'}),
-            new St.Bin({ style_class: 'box-bin'})
+            new St.Bin({style_class: 'box-bin'}),
+            new St.Bin({style_class: 'box-bin'})
         ];
 
         boxes = [
-            new St.BoxLayout({ style_class: 'button-box' }),
-            new St.BoxLayout({ style_class: 'button-box' })
+            new St.BoxLayout({style_class: 'button-box'}),
+            new St.BoxLayout({style_class: 'button-box'})
         ];
 
-        actors.forEach(function(actor, i) {
+        actors.forEach(function (actor, i) {
             actor.add_actor(boxes[i]);
         });
 
@@ -128,7 +132,7 @@ var Buttons = class {
         // Enable/disable "autohide" function when switch is changed from settings
         this._settings.connect(
             'changed::hide-buttons',
-            Lang.bind(this, function() {
+            Lang.bind(this, function () {
                 if (this._settings.get_boolean('hide-buttons')) {
                     this._enableButtonAutohide();
                 } else {
@@ -149,13 +153,13 @@ var Buttons = class {
         orders[0] = orders[0].split(',');
 
         // Check if it's actually exists, if not then create it
-        if(typeof orders[1] == 'undefined') orders[1] = '';
+        if (typeof orders[1] == 'undefined') orders[1] = '';
         orders[1] = orders[1].split(',');
 
         const callbacks = {
-            minimize : Lang.bind(this, this._minimize),
-            maximize : Lang.bind(this, this._maximize),
-            close    : Lang.bind(this, this._close)
+            minimize: Lang.bind(this, this._minimize),
+            maximize: Lang.bind(this, this._maximize),
+            close: Lang.bind(this, this._close)
         };
 
         for (let bi = 0; bi < boxes.length; ++bi) {
@@ -173,7 +177,7 @@ var Buttons = class {
                 }
 
                 let button = new St.Button({
-                    style_class: order[i]  + ' window-button',
+                    style_class: order[i] + ' window-button',
                     track_hover: true
                 });
 
@@ -221,7 +225,7 @@ var Buttons = class {
 
     _destroyButtons() {
         if (actors) {
-            actors.forEach(function(actor, i) {
+            actors.forEach(function (actor, i) {
                 actor.destroy();
             });
         }
@@ -266,7 +270,7 @@ var Buttons = class {
      * Buttons actions
      */
     _leftclick(callback) {
-        return function(actor, event) {
+        return function (actor, event) {
             if (event.get_button() !== 1) {
                 return null;
             }
@@ -315,7 +319,16 @@ var Buttons = class {
     _loadTheme() {
         let theme;
         if (this._settings.get_boolean('automatic-theme')) {
-            theme = Gtk.Settings.get_default().gtk_theme_name;
+            let settings_default = Gtk.Settings.get_default();
+            // We might get here to early. If null, reschedule for a later time and try again
+            if (settings_default != null) {
+                theme = settings_default.gtk_theme_name;
+            } else {
+                Mainloop.idle_add(Lang.bind(this, function () {
+                    this._loadTheme();
+                }));
+                return;
+            }
         } else {
             theme = this._settings.get_string('theme');
         }
@@ -374,7 +387,7 @@ var Buttons = class {
             }
         }
 
-        actors.forEach(function(actor, i) {
+        actors.forEach(function (actor, i) {
             if (!boxes[i].get_children().length) {
                 return;
             }
@@ -394,7 +407,7 @@ var Buttons = class {
 
         this._originalFunction = Main.panel._onButtonPress;
 
-        Main.panel._onButtonPress = function(actor, event) {
+        Main.panel._onButtonPress = function (actor, event) {
             if (Main.modalCount > 0)
                 return Clutter.EVENT_PROPAGATE;
 
@@ -411,7 +424,7 @@ var Buttons = class {
                 return Clutter.EVENT_PROPAGATE;
 
             let dragWindow = focusWindow.is_attached_dialog() ? focusWindow.get_transient_for()
-                                                              : focusWindow;
+                : focusWindow;
             if (!dragWindow)
                 return Clutter.EVENT_PROPAGATE;
 
@@ -419,19 +432,19 @@ var Buttons = class {
             let [stageX, stageY] = event.get_coords();
 
             let allowDrag = dragWindow.maximized_vertically &&
-                            stageX > rect.x && stageX < rect.x + rect.width;
+                stageX > rect.x && stageX < rect.x + rect.width;
 
             if (!allowDrag)
                 return Clutter.EVENT_PROPAGATE;
 
             global.display.begin_grab_op(dragWindow,
-                                         Meta.GrabOp.MOVING,
-                                         false, /* pointer grab */
-                                         true, /* frame action */
-                                         button,
-                                         event.get_state(),
-                                         event.get_time(),
-                                         stageX, stageY);
+                Meta.GrabOp.MOVING,
+                false, /* pointer grab */
+                true, /* frame action */
+                button,
+                event.get_state(),
+                event.get_time(),
+                stageX, stageY);
 
             return Clutter.EVENT_STOP;
         };
@@ -463,7 +476,7 @@ var Buttons = class {
 
         this._wmCallbackIDs = this._wmCallbackIDs.concat(Utils.onSizeChange(Lang.bind(this, this._updateVisibility)));
 
-        this._themeCallbackID = Gtk.Settings.get_default().connect('notify::gtk-theme-name', Lang.bind(this, this._loadTheme));
+        this._enableThemeCallback();
 
         this._globalCallBackID = display.connect('restacked', Lang.bind(this, this._updateVisibility));
 
@@ -472,12 +485,24 @@ var Buttons = class {
         this._isEnabled = true;
     }
 
+    _enableThemeCallback() {
+        Mainloop.idle_add(Lang.bind(this, function () {
+            let settings = Gtk.Settings.get_default();
+            // We might get here to early. If null, reschedule for a later time and try again
+            if (settings != null) {
+                this._themeCallbackID = settings.connect('notify::gtk-theme-name', Lang.bind(this, this._loadTheme));
+            } else {
+                this._enableThemeCallback();
+            }
+        }));
+    }
+
     _disable() {
-        this._wmCallbackIDs.forEach(function(id) {
+        this._wmCallbackIDs.forEach(function (id) {
             global.window_manager.disconnect(id);
         });
 
-        this._overviewCallbackIDs.forEach(function(id) {
+        this._overviewCallbackIDs.forEach(function (id) {
             Main.overview.disconnect(id);
         });
 
