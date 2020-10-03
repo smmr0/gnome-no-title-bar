@@ -64,6 +64,7 @@ var Buttons = class {
         this._settings = settings;
         this._isEnabled = false;
         this._activeCSS = false;
+        this._clickable = false;
 
         this._settingsId = this._settings.connect(
             'changed::button-position',
@@ -270,8 +271,14 @@ var Buttons = class {
      * Buttons actions
      */
     _leftclick(callback) {
+        const clickable = this._clickable;
+
         return function (actor, event) {
             if (event.get_button() !== 1) {
+                return null;
+            }
+
+            if (!clickable) {
                 return null;
             }
 
@@ -394,11 +401,7 @@ var Buttons = class {
                 return;
             }
 
-            if (visible) {
-                actor.show();
-            } else {
-                actor.hide();
-            }
+            this._clickable = visible;
         });
 
         return false;
