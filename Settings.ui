@@ -263,6 +263,7 @@
                             <item translatable="yes">Before status area</item>
                             <item translatable="yes">After status area</item>
                             <item translatable="yes">Hidden</item>
+                            <item translatable="yes">Center box</item>
                           </items>
                         </object>
                         <packing>
