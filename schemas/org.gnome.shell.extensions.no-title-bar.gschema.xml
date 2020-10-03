@@ -7,6 +7,7 @@
       <value value="3" nick="before-status-area" />
       <value value="4" nick="after-status-area" />
       <value value="5" nick="hidden" />
+      <value value="6" nick="center-box" />
   </enum>
 
   <enum id="org.gnome.shell.extensions.no-title-bar.ignoreListType">
@@ -33,7 +34,7 @@
     <key name="button-position" enum="org.gnome.shell.extensions.no-title-bar.buttonPosition">
       <default>'within-status-area'</default>
         <summary>Button position in the top panel</summary>
-        <description>Controls whether and where buttons of maximized windows appear in the top panel. Possible values are: "before-app-menu" to display buttons before the application name, "after-app-menu" to display buttons after the application name, "within-status-area" to display buttons within the system status area, "after-status-area" to display buttons after the system status area and "hidden" to not show buttons at all.</description>
+        <description>Controls whether and where buttons of maximized windows appear in the top panel. Possible values are: "before-app-menu" to display buttons before the application name, "after-app-menu" to display buttons after the application name, "within-status-area" to display buttons within the system status area, "after-status-area" to display buttons after the system status area, "hidden" to not show buttons at all and "center-box" to display buttons in the center box.</description>
     </key>
 
     <key type="s" name="theme">

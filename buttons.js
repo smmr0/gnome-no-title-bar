@@ -23,7 +23,8 @@ const Position = {
     WITHIN_STATUS_AREA: 2,
     BEFORE_STATUS_AREA: 3,
     AFTER_STATUS_AREA: 4,
-    HIDDEN: 5
+    HIDDEN: 5,
+    CENTER_BOX: 6
 }
 
 // Functions for changing opacity (to act as auto-hiding)
@@ -214,6 +215,9 @@ var Buttons = class {
                         break;
                     case Position.AFTER_STATUS_AREA:
                         Main.panel._rightBox.add(this._container);
+                        break;
+                    case Position.CENTER_BOX:
+                        Main.panel._centerBox.add(this._container);
                         break;
                 }
             }
