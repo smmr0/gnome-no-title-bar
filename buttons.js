@@ -403,6 +403,9 @@ var Buttons = class {
             }
 
             buttons._clickable = visible;
+            if (buttons._container) {
+                buttons._container.opacity = visible ? 255 : 127;
+            }
         });
 
         return false;
