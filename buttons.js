@@ -271,14 +271,14 @@ var Buttons = class {
      * Buttons actions
      */
     _leftclick(callback) {
-        const clickable = this._clickable;
+        const buttons = this;
 
         return function (actor, event) {
             if (event.get_button() !== 1) {
                 return null;
             }
 
-            if (!clickable) {
+            if (!buttons._clickable) {
                 return null;
             }
 
@@ -396,12 +396,13 @@ var Buttons = class {
 
         Utils.log_debug(`Visibility updates of buttons: now is ${visible}`);
 
+        let buttons = this;
         actors.forEach(function (actor, i) {
             if (!boxes[i].get_children().length) {
                 return;
             }
 
-            this._clickable = visible;
+            buttons._clickable = visible;
         });
 
         return false;
