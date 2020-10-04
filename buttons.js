@@ -394,7 +394,7 @@ var Buttons = class {
             }
         }
 
-        Utils.log_debug(`Visibility updates of buttons: now is ${visible}`);
+        Utils.log_debug(`Clickability updates of buttons: now is ${visible}`);
 
         let buttons = this;
         actors.forEach(function (actor, i) {
