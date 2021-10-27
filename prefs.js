@@ -5,6 +5,7 @@ const Gtk = imports.gi.Gtk;
 const Lang = imports.lang;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
+
 const Convenience = Me.imports.convenience;
 
 let extensionPath = Me.path;
@@ -170,35 +171,21 @@ function buildPrefsWidget(){
     buildable.get_object('ignore_list_toolbutton_add').connect(
         'clicked',
         function() {
-            let dialog = new Gtk.Dialog({ title: _('Add entry to list'),
-                                          transient_for: box.get_toplevel(),
+            let dialog = new Gtk.AppChooserDialog({ title: _('Add entry to list'),
+                                          transient_for: box.get_root(),
                                           use_header_bar: true,
                                           modal: true });
+            dialog.get_widget().set({
+                show_all: true,
+                show_other: true, // hide more button
+            });
 
-            let sub_box = buildable.get_object('ignore_list_add_dialog');
-            dialog.get_content_area().add(sub_box);
-
-            // Objects
-            let addCombobox = buildable.get_object('add_combobox');
-            if (needsList) {
-                needsList = false;
-                let appList = getAppList().map(function(appInfo) {
-                    return appInfo.get_name();
-                });
-                appList.sort();
-                appList.forEach(function(appInfo) {
-                    addCombobox.append(appInfo, appInfo);
-                });
-            }
-            let saveButton = buildable.get_object('ignore_list_add_button_save');
-            let cancelButton = buildable.get_object('ignore_list_add_button_cancel');
-
-            let saveButtonId = saveButton.connect(
-                'clicked',
-                function() {
-                    let value = addCombobox.get_active_id();
-                    let name = value;
+            dialog.connect('response', (dlg, id) => {
+                const appInfo = id === Gtk.ResponseType.OK
+                    ? dialog.get_widget().get_app_info() : null;
+                if (appInfo) {
                     let entries = settings.get_string('ignore-list');
+                    var name = appInfo.get_name();
 
                     if (entries.length > 0)
                         entries = entries + '; ' + name;
@@ -206,127 +193,24 @@ function buildPrefsWidget(){
                         entries = name;
 
                     // Split, order alphabetically, remove duplicates and join
-                    entries = splitEntries(entries);
-                    entries.sort();
-                    entries = entries.filter(function(item, pos, ary) {
-                            return !pos || item != ary[pos - 1];
-                        });
-                    entries = entries.join('; ');
+                    entries = splitEntries(entries)
+                        .sort()
+                        .filter((item, pos, ary) => !pos || item !== ary[pos - 1])
+                        .join('; ');
 
                     settings.set_string('ignore-list', entries);
-
-                    close();
                 }
-            );
-
-            let cancelButtonId = cancelButton.connect(
-                'clicked',
-                close
-            );
-
-            dialog.connect('response', Lang.bind(this, function(dialog, id) {
-                close();
-            }));
-
-            dialog.show_all();
-
-            function close() {
-                buildable.get_object('ignore_list_add_button_save').disconnect(saveButtonId);
-                buildable.get_object('ignore_list_add_button_cancel').disconnect(cancelButtonId);
-
-                // remove the settings box so it doesn't get destroyed
-                dialog.get_content_area().remove(sub_box);
                 dialog.destroy();
-                return;
-            }
+            });
+
+            dialog.show();
         }
     );
 
-    buildable.get_object('ignore_list_toolbutton_remove').connect(
-        'clicked',
-        function() {removeEntry(settings);}
-    );
-
-    buildable.get_object('ignore_list_toolbutton_edit').connect(
-        'clicked',
-        function() {
-            if (selected_entry < 0) return;
-
-            let dialog = new Gtk.Dialog({ title: _('Edit entry'),
-                                          transient_for: box.get_toplevel(),
-                                          use_header_bar: true,
-                                          modal: true });
-
-            let sub_box = buildable.get_object('ignore_list_edit_dialog');
-            dialog.get_content_area().add(sub_box);
-
-            // Objects
-            let entries = settings.get_string('ignore-list');
-            if (!entries.length) return;
-            entries = splitEntries(entries);
-
-            let entry = buildable.get_object('ignore_list_edit_entry');
-            let saveButton = buildable.get_object('ignore_list_edit_button_save');
-            let cancelButton = buildable.get_object('ignore_list_edit_button_cancel');
-
-            // Clean the entry in case it was already used
-            entry.set_text(entries[selected_entry]);
-            entry.connect('icon-release', Lang.bind(entry, function() {this.set_text('');}));
-
-            let saveButtonId = saveButton.connect(
-                'clicked',
-                function() {
-                    let name = entry.get_text();
-                    let entries = settings.get_string('ignore-list');
-
-                    if (entries.length > 0)
-                        entries = entries + '; ' + name;
-                    else
-                        entries = name;
-
-                    // Split, order alphabetically, remove duplicates and join
-                    entries = splitEntries(entries);
-                    entries.splice(selected_entry, 1);
-                    entries.sort();
-                    entries = entries.filter(function(item, pos, ary) {
-                            return !pos || item != ary[pos - 1];
-                        });
-                    entries = entries.join('; ');
-
-                    settings.set_string('ignore-list', entries);
-
-                    close();
-                }
-            );
-
-            let cancelButtonId = cancelButton.connect(
-                'clicked',
-                close
-            );
-
-            dialog.connect('response', Lang.bind(this, function(dialog, id) {
-                close();
-            }));
-
-            dialog.show_all();
-
-            function close() {
-                buildable.get_object('ignore_list_edit_button_save').disconnect(saveButtonId);
-                buildable.get_object('ignore_list_edit_button_cancel').disconnect(cancelButtonId);
-
-                // remove the settings box so it doesn't get destroyed
-                dialog.get_content_area().remove(sub_box);
-                dialog.destroy();
-                return;
-            }
-        }
-    );
-
-
-    box.show_all();
+    buildable.get_object('ignore_list_toolbutton_remove').connect('clicked', () => removeEntry(settings));
 
     return box;
-};
+}
 
 let selected_entry = 0;
 

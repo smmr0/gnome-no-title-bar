@@ -11,7 +11,7 @@ const ByteArray = imports.byteArray;
 
 const ws_manager = global.workspace_manager;
 
-const WindowState = {
+var WindowState = {
     DEFAULT: 'default',
     HIDE_TITLEBAR: 'hide-titlebar',
     UNDECORATED: 'undecorated',
@@ -202,7 +202,7 @@ var Decoration = class {
         if (originalState === WindowState.DEFAULT) {
             this._toggleDecorations(win, hide);
         } else {
-            Utils.log_debug(`Skipping window '${win.get_title()}' because its window state was not default`);
+            Utils.log_debug(`Skipping window '${win.get_title()}' because its window state was '${originalState}'`);
         }
     }
 
@@ -211,7 +211,7 @@ var Decoration = class {
             return win._noTitleBarOriginalState;
         }
 
-        if (!win.decorated) {
+        if (!win.decorated || !win.titlebar_is_onscreen()) {
             Utils.log_debug(`Window '${win.get_title()}' is undecorated`);
             return win._noTitleBarOriginalState = WindowState.UNDECORATED;
         }
