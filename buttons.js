@@ -313,7 +313,7 @@ var Buttons = class {
     /**
      * Theming
      */
-    _loadTheme() {
+    _loadTheme(retry = 3) {
         let theme;
         if (this._settings.get_boolean('automatic-theme')) {
             let settings_default = Gtk.Settings.get_default();
@@ -321,9 +321,13 @@ var Buttons = class {
             if (settings_default != null) {
                 theme = settings_default.gtk_theme_name;
             } else {
-                Mainloop.idle_add(Lang.bind(this, function () {
-                    this._loadTheme();
-                }));
+                if (retry > 0) {
+                    Mainloop.idle_add(Lang.bind(this, function () {
+                        this._loadTheme(retry--);
+                    }));
+                } else {
+                    Utils.log_debug('Was unable to detect theme, because Gtk.Settings.get_default() returned null three times');
+                }
                 return;
             }
         } else {
