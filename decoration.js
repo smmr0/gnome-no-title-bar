@@ -221,14 +221,6 @@ var Decoration = class {
             return win._noTitleBarOriginalState = WindowState.CLIENT_DECORATED;
         }
 
-        let winId = this._guessWindowXID(win);
-
-        let xprops = GLib.spawn_command_line_sync(`xprop -id ${winId}`);
-        if (!xprops[0]) {
-            Utils.log_debug(`Unable to determine windows '${win.get_title()}' original state`);
-            return win._noTitleBarOriginalState = WindowState.UNKNOWN;
-        }
-
         return win._noTitleBarOriginalState = WindowState.DEFAULT;
     }
 
@@ -384,7 +376,7 @@ var Decoration = class {
         // Try enumerating all available windows and match the title. Note that this
         // may be necessary if the title contains special characters and `x-window`
         // is not available.
-        let result = GLib.spawn_command_line_sync('xprop -root _NET_CLIENT_LIST');
+        let result = GLib.spawn_command_line_sync('timeout 0.5s xprop -root _NET_CLIENT_LIST');
         if (result[0]) {
             let str = ByteArray.toString(result[1]);
 
